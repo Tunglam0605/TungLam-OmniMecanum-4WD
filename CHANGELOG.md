@@ -7,6 +7,21 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.8.2] - 2026-09-30
+
+### Documentation & onboarding
+- Rebuilt the README into a beginner-friendly and production-style project landing page with CI/release badges, Mermaid architecture diagrams, wiring maps, quick-start flows, braking diagrams, troubleshooting, and API guidance.
+- Added explicit Arduino Mega -> two L298N -> four motor wiring tables and a complete common-ground/power checklist.
+- Added a PS2 integration section that keeps PS2X as an optional external input layer instead of coupling it to the motor core.
+- Expanded `extras/WIRING.md` into a step-by-step commissioning and troubleshooting guide.
+- Added `FirstMotorTest` to verify M1..M4 placement and polarity safely at low PWM before chassis testing.
+- Reworked every `.ino` example with detailed file-level, setup, state, command, timing, braking, and per-line operational comments so beginners can learn directly from Arduino IDE examples.
+- Expanded Arduino IDE keyword highlighting for the complete modern and legacy public API.
+- Improved `library.properties` metadata for Library Manager users.
+
+### Compatibility
+- No intended motor-control, ABS, timer, pin-map, Mecanum, Omni, or V5 public API behavior change.
+
 ## [0.8.1] - 2026-09-30
 
 ### Cleanup
