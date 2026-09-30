@@ -11,11 +11,11 @@ All notable changes to this project will be documented here.
 
 ### Documentation
 - Restored the original V5 author identity block in the public headers: Nguyen Khac Tung Lam, class DHTD16A2CL and the original student identifier.
-- Restored the original V5 quick wiring reference so users opening the header immediately see PWM and DIR connections.
+- Restored the familiar V5 quick wiring reference and corrected it against the actual AVR implementation so users opening the header immediately see accurate PWM and DIR connections.
 - Added the modern logical wheel-order diagram (M1 front-left, M2 rear-left, M3 front-right, M4 rear-right) and vx/vy/wz direction convention.
 - Added quick class examples for both legacy and modern APIs directly at the top of the main header.
 - Added an ABS quick-reference block describing legacy vs modern non-blocking behavior.
-- Documented the historical DIR4 wiring-comment mismatch: the original V5 comment says D36/D37, while the AVR implementation actually uses D37/PC0 for forward and D36/PC1 for reverse.
+- Corrected DIR4 documentation to D37/PC0 for forward and D36/PC1 for reverse, matching the implementation.
 - Expanded the legacy compatibility header so old users still see author and wiring information without opening another file.
 
 ### Compatibility

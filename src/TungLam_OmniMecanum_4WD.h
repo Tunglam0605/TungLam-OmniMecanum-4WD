@@ -22,8 +22,8 @@
     - Cải tiến ABS legacy thành non-blocking mà code cũ không cần gọi update().
 
   ==============================================================================
-  SƠ ĐỒ ĐẤU NỐI V5 GỐC
-  (Giữ lại nguyên tinh thần tài liệu gốc để người dùng cũ nhận biết ngay.)
+  SƠ ĐỒ ĐẤU NỐI V5 - ĐÃ ĐỐI CHIẾU VỚI IMPLEMENTATION
+  (Giữ bố cục quen thuộc của V5 nhưng sửa mapping để khớp chính xác code AVR.)
   ------------------------------------------------------------------------------
 
   CHÂN PWM ------ CHÂN SỐ
@@ -36,7 +36,7 @@
               DIR1                    30                   31
               DIR2                    32                   33
               DIR3                    34                   35
-              DIR4                    36                   37
+              DIR4                    37                   36
 
   ==============================================================================
   MAPPING THỰC TẾ THEO CODE AVR HIỆN TẠI
@@ -56,13 +56,6 @@
     M2      D6  / OC4A     D32 / PC5            D33 / PC4
     M3      D7  / OC4B     D34 / PC3            D35 / PC2
     M4      D8  / OC4C     D37 / PC0            D36 / PC1
-
-  LƯU Ý QUAN TRỌNG:
-    Comment V5 lịch sử ghi DIR4 "36 tiến / 37 lùi", nhưng code V5 thực tế
-    dùng PC0 cho chiều tiến và PC1 cho chiều lùi. Trên Arduino Mega:
-      PC0 = D37
-      PC1 = D36
-    Bảng "mapping thực tế" phía trên phản ánh đúng hành vi của code.
 
   ==============================================================================
   QUY ƯỚC THỨ TỰ 4 BÁNH - API HIỆN ĐẠI
