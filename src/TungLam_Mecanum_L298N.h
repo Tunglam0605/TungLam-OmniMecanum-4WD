@@ -1,9 +1,12 @@
-#ifndef TUNGLAM_MECANUM_L298N_H
-#define TUNGLAM_MECANUM_L298N_H
+#ifndef TUNGLAM_MECANUM_L298N_COMPAT_H
+#define TUNGLAM_MECANUM_L298N_COMPAT_H
+
+// Compatibility header from the 0.5.x packaging phase.
+// It intentionally preserves the legacy V5 API.
+// New projects should include <TungLam_OmniMecanum_4WD.h>.
 
 #include "TungLam_Control_MotorV5.h"
 
-// Stable public-facing alias. The legacy V5 class is preserved for backward compatibility.
 using TungLamMecanumL298N = TungLam_Control_MotorV5;
 
 #endif

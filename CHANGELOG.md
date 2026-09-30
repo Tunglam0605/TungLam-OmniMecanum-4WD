@@ -4,13 +4,32 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
-### Planned
-- Non-blocking active braking state machine
-- Safer direction transitions and braking limits for L298N
-- Unified signed per-wheel command API
-- Motion enum instead of numeric state values
-- Mecanum `vx/vy/wz` mixer
-- Hardware validation with Arduino Mega + 2x L298N
+### Validation
+- Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
+
+## [0.6.0] - 2026-09-30
+
+### Added
+- New `TungLamDrive4WD` V6 API
+- Shared four-motor signed output layer (`-255..255`)
+- Mecanum-X kinematics mixer
+- Omni X-drive kinematics mixer
+- Proportional wheel normalization
+- Per-motor inversion configuration
+- Configurable direction-change dead-time
+- Coast stop and L298N dynamic braking
+- Non-blocking active reverse braking state machine
+- Automatic reverse-brake duty limiting
+- `ABS()` alias for the active reverse-brake concept
+- New Mecanum, Omni-X, per-wheel and non-blocking brake examples
+
+### Changed
+- Project scope expanded from Mecanum-only to four-wheel holonomic Mecanum/Omni robots.
+- Public library name changed to `TungLam_OmniMecanum_4WD`.
+- Repository renamed to `TungLam-OmniMecanum-4WD`.
+
+### Compatibility
+- Legacy `TungLam_Control_MotorV5` remains available.
 
 ## [0.5.0] - 2026-09-30
 
