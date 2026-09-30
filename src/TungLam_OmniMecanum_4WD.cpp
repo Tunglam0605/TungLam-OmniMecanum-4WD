@@ -442,7 +442,7 @@ void TungLamDrive4WD::initPwm() {
     ICR4 = 255;
   }
 
-  writeAllPwm(0);  // Never leave stale compare values active after timer setup.
+  halWriteAllPwm(0);  // Never leave stale compare values active after timer setup.
 }
 
 /**
@@ -834,25 +834,6 @@ void TungLamDrive4WD::applyWheelsRaw(const Wheels& wheels) {
   applied_ = physical;
 }
 
-/**
- * @brief Encode signed wheel directions into the complete PORTC bit pattern.
- *
- * A zero wheel command leaves both direction bits low for that wheel.
- */
-void TungLamDrive4WD::writeDirectionPattern(const Wheels& wheels) {
-  halWriteDirectionPattern({wheels.m1, wheels.m2, wheels.m3, wheels.m4});
-}
-
-/** @brief Write per-wheel absolute PWM magnitudes to Timer3/Timer4 OCR registers. */
-void TungLamDrive4WD::writePwm(const Wheels& wheels) {
-  halWritePwm({wheels.m1, wheels.m2, wheels.m3, wheels.m4});
-}
-
-/** @brief Write one common PWM duty to all four drive-motor compare registers. */
-void TungLamDrive4WD::writeAllPwm(uint8_t duty) {
-  halWriteAllPwm(duty);
-}
-
 /** @brief Select one reverse-brake duration from the six legacy-compatible ranges. */
 uint8_t TungLamDrive4WD::selectBrakeDuration(uint32_t duration) const {
   if (duration < 500UL) return brakeT500_;
@@ -868,14 +849,6 @@ int16_t TungLamDrive4WD::clampWheel(int32_t value) {
   if (value > 255) return 255;
   if (value < -255) return -255;
   return (int16_t)value;
-}
-
-/** @brief Convert a signed wheel demand to a PWM-safe 0..255 magnitude. */
-uint8_t TungLamDrive4WD::magnitude(int16_t value) {
-  if (value < 0) {
-    value = -value;
-  }
-  return value > 255 ? 255 : (uint8_t)value;
 }
 
 /** @brief Convert a signed value to the three-state sign representation -1/0/+1. */
@@ -962,28 +935,6 @@ TungLamDrive4WD::Wheels TungLamDrive4WD::normalize(int32_t m1,
  */
 TungLam_Control_MotorV5::TungLam_Control_MotorV5() {
   // No hardware action here; Mode0()/Mode1() performs explicit initialization.
-}
-/**
- * @brief Historical diagonal-direction cleanup helper retained for compatibility.
- *
- * The helper clears selected PORTC direction bits only; it does not drive PWM.
- */
-void TungLam_Control_MotorV5:: Reset_45 (bool Off)
-{
-  // Historical helper now goes through the common safe HAL.
-  HalWheels current = halCurrentApplied();
-
-  if (Off == true) {
-    // Disable M2 and M4.
-    current.m2 = 0;
-    current.m4 = 0;
-  } else {
-    // Disable M1 and M3.
-    current.m1 = 0;
-    current.m3 = 0;
-  }
-
-  halApply(current, 100);
 }
 /**
  * @brief Write one legacy wheel-direction pair on PORTC.
@@ -1351,30 +1302,6 @@ void TungLam_Control_MotorV5::Timer() {
     else TIM = timAbove3000;
     isMoving = false; // Tắt cờ
     startTime = 0;    // Clear timestamp for the next movement phase
-}
-
-/** @brief Write a raw legacy direction pattern to PORTC. */
-void TungLam_Control_MotorV5::setSTOP(uint8_t pattern) {
-    // Cài đặt chiều động cơ từ pattern
-    PORTC = pattern; // Giả sử PORTC được sử dụng để điều khiển các chân
-}
-
-/** @brief Write one common PWM duty to all four legacy drive outputs. */
-void TungLam_Control_MotorV5::setPWM(uint8_t duty) {
-    // Cài đặt giá trị PWM cho các chân
-    OCR3A = duty;  // Chân 5
-    OCR4A = duty;  // Chân 6
-    OCR4B = duty;  // Chân 7
-    OCR4C = duty;  // Chân 8
-}
-
-/** @brief Write independent legacy PWM duties to M1..M4. */
-void TungLam_Control_MotorV5::PWM(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
-    // Cài đặt giá trị PWM cho các chân
-    OCR3A = duty1;  // Chân 5
-    OCR4A = duty2;  // Chân 6
-    OCR4B = duty3;  // Chân 7
-    OCR4C = duty4;  // Chân 8
 }
 
 /** @brief Per-wheel-duty forward command; movement code 1. */

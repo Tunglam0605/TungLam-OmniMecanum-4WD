@@ -119,11 +119,7 @@ setTimABS(...)
 
 The legacy class now uses the Timer3 PWM overflow interrupt as a short one-shot scheduler during `ABS()`.
 
-That means old code does **not** need to add:
-
-```cpp
-robot.update()  // optional state synchronization;
-```
+That means old V5 code does **not** need any new service call such as `update()`. The legacy class has no `update()` requirement.
 
 The call:
 
@@ -192,8 +188,6 @@ void setup() {
 }
 
 void loop() {
-  robot.update();
-
   robot.forward(150);
 }
 ```
@@ -211,8 +205,6 @@ void setup() {
 }
 
 void loop() {
-  robot.update();
-
   // vx forward, vy right, wz clockwise.
   robot.drive(160, 60, 0);
 }
@@ -295,7 +287,7 @@ ABS(duty)
    |
    +--> function returns immediately
               |
-         robot.update()
+      Timer3 overflow ISR
               |
         TIM expires
               |
@@ -420,6 +412,8 @@ Old sketches can continue including `TungLam_Control_MotorV5.h`; that compatibil
 - **0.6.x** — V6 holonomic core and ABS compatibility refinement
 - **0.7.0** — drop-in V5 API compatibility with interrupt-driven non-blocking ABS
 - **0.7.1** — compact 3-file source layout with unchanged V5/V6 public APIs
+- **0.8.0** — common safe Motor HAL, V5-parity Mecanum mixer, hardware-timed ABS
+- **0.8.1** — pre-1.0 cleanup: dead-code removal, pinned regression dependencies and documentation cleanup
 - **1.0.0** — reserved for hardware-validated stable release
 
 ## License

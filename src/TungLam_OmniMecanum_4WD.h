@@ -352,20 +352,8 @@ class TungLam_Control_MotorV5 {
                  uint8_t tAbove3000);
 
  private:
-  // Historical helper used by old diagonal-direction logic.
-  void Reset_45(bool Off);
-
   // Reset one AVR timer register set before reconfiguration.
   void Reset_Timer(uint8_t timerNumber);
-
-  // Write the complete PORTC direction bit pattern.
-  void setSTOP(uint8_t pattern);
-
-  // Apply one common PWM duty to all four drive motors.
-  void setPWM(uint8_t duty);
-
-  // Apply independent PWM duties to M1..M4.
-  void PWM(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   // Start motion-duration measurement on the first command of a movement phase.
   void Tim();
@@ -632,23 +620,11 @@ class TungLamDrive4WD {
   // Convert logical wheel commands to physical commands and write hardware.
   void applyWheelsRaw(const Wheels& wheels);
 
-  // Build and write the PORTC direction-bit pattern for all four motors.
-  void writeDirectionPattern(const Wheels& wheels);
-
-  // Write absolute PWM magnitudes to OCR3A/OCR4A/OCR4B/OCR4C.
-  void writePwm(const Wheels& wheels);
-
-  // Write one common duty to all four drive PWM compare registers.
-  void writeAllPwm(uint8_t duty);
-
   // Choose one brake duration from the six-stage timing table.
   uint8_t selectBrakeDuration(uint32_t motionDurationMs) const;
 
   // Clamp a signed wheel demand to the hardware-supported -255..255 range.
   static int16_t clampWheel(int32_t value);
-
-  // Convert a signed wheel command to an unsigned PWM magnitude.
-  static uint8_t magnitude(int16_t value);
 
   // Return -1, 0 or +1 for a signed wheel command.
   static int8_t signOf(int16_t value);

@@ -17,7 +17,7 @@ jobs:
       - name: Install AVR core
         run: |
           arduino-cli core update-index
-          arduino-cli core install arduino:avr
+          arduino-cli core install arduino:avr@1.8.8
 
       - name: Compile every example for Arduino Mega
         shell: bash
