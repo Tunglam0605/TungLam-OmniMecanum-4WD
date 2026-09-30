@@ -1,0 +1,38 @@
+name: Arduino Mega Compile
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install AVR core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+
+      - name: Compile V6 Mecanum example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/MecanumDrive
+
+      - name: Compile V6 Omni-X example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/OmniXDrive
+
+      - name: Compile V6 per-wheel example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/PerWheelControl
+
+      - name: Compile V6 active-brake example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/ActiveBrakeNonBlocking
+
+      - name: Compile legacy basic example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/BasicMotion
+
+      - name: Compile legacy active-brake example
+        run: arduino-cli compile --fqbn arduino:avr:mega examples/ActiveBrake

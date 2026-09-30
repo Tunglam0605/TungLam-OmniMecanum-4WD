@@ -26,8 +26,12 @@ TungLam_Control_MotorV5::TungLam_Control_MotorV5() {
 }
 void TungLam_Control_MotorV5:: Reset_45 (bool Off)
 {
-  if     (Off == true ) PORTB &= ~ ((1<<PC0)|(1<<PC1)|(1<<PC4)|(1<<PC5));
-  else if(Off == false) PORTB &= ~ ((1<<PC2)|(1<<PC3)|(1<<PC6)|(1<<PC7));
+  // Legacy helper kept for compatibility. All four DIR pairs are on PORTC.
+  if (Off == true) {
+    PORTC &= ~((1 << PC0) | (1 << PC1) | (1 << PC4) | (1 << PC5));
+  } else {
+    PORTC &= ~((1 << PC2) | (1 << PC3) | (1 << PC6) | (1 << PC7));
+  }
 }
 void TungLam_Control_MotorV5::Dir(uint8_t BanhNumber, bool Set)
 {
@@ -236,11 +240,12 @@ void TungLam_Control_MotorV5:: Init_Timer2(uint8_t duty9, uint8_t duty10) // Cà
       OCR2A = duty10; 
 }
 void TungLam_Control_MotorV5::STOP() {
-    setSTOP(0); // Tất cả chân điều khiển về LOW
-    setPWM(0);       // Dừng PWM
+    setPWM(0);  // Disable EN/PWM before changing bridge direction state.
+    setSTOP(0);
     pre = 0;
+    isMoving = false;
+    startTime = 0;
 }
-
 void TungLam_Control_MotorV5::moveForward(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -263,24 +268,18 @@ void TungLam_Control_MotorV5::moveBackward(uint8_t duty) {
 
 void TungLam_Control_MotorV5::Forward_Right(uint8_t duty) {
     Tim();
-    Dir(1,Set);
-    Dir(3,Set);
-    Reset_45(false);
-    // Tiến Phải
-    setPWM(duty);
-    pre = 3; // Tiến Phải
+    Dir(1, Set);
+    Dir(3, Set);
+    PWM(duty, 0, duty, 0);
+    pre = 3;
 }
-
 void TungLam_Control_MotorV5::Backward_Right(uint8_t duty) {
     Tim();
-    Dir(2,!Set);
-    Dir(4,!Set);
-    Reset_45(true);    
-    // Lùi Phải
-    setPWM(duty);
-    pre = 4; // Lùi Phải
+    Dir(2, !Set);
+    Dir(4, !Set);
+    PWM(0, duty, 0, duty);
+    pre = 4;
 }
-
 void TungLam_Control_MotorV5::moveRight(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -326,39 +325,45 @@ void TungLam_Control_MotorV5::moveRightSide(uint8_t duty) {
 }
 
 void TungLam_Control_MotorV5::Forward_Left(uint8_t duty) {
-    Tim();    
+    Tim();
     Dir(2, Set);
     Dir(4, Set);
-    Reset_45(true);
-  // Tiến Trái 
-    setPWM(duty);
-    pre = 9; // Tiến Trái
+    PWM(0, duty, 0, duty);
+    pre = 9;
 }
-
 void TungLam_Control_MotorV5::Backward_Left(uint8_t duty) {
-    Tim();      
+    Tim();
     Dir(1, !Set);
     Dir(3, !Set);
-    Reset_45(false);
-  // Lùi Trái
-    setPWM(duty);
-    pre = 10; // Lùi Trái
+    PWM(duty, 0, duty, 0);
+    pre = 10;
 }
-
 void TungLam_Control_MotorV5::ABS(uint8_t duty) {
-    if(pre == 0) {STOP(); pre = 0; isMoving = false; return;}
-    if(pre == 1) {isMoving = true; Timer(); moveBackward(duty);  delay(TIM); pre = 0;}
-    if(pre == 2) {isMoving = true; Timer(); moveForward(duty);   delay(TIM); pre = 0;}
-    if(pre == 3) {isMoving = true; Timer(); Backward_Left(duty); delay(TIM); pre = 0;} 
-    if(pre == 4) {isMoving = true; Timer(); Forward_Left(duty);  delay(TIM); pre = 0;}   
-    if(pre == 5) {isMoving = true; Timer(); moveLeft(duty);      delay(TIM); pre = 0;} 
-    if(pre == 6) {isMoving = true; Timer(); moveRight(duty);     delay(TIM); pre = 0;}
-    if(pre == 7) {isMoving = true; Timer(); moveRightSide(duty); delay(TIM); pre = 0;} 
-    if(pre == 8) {isMoving = true; Timer(); moveLeftSide(duty);  delay(TIM); pre = 0;} 
-    if(pre == 9) {isMoving = true; Timer(); Backward_Right(duty);delay(TIM); pre = 0;} 
-    if(pre ==10) {isMoving = true; Timer(); Forward_Right(duty); delay(TIM); pre = 0;} 
-    // Reset trạng thái di chuyển sau khi hoàn thành
-    isMoving = false;
+    const uint8_t previousMotion = pre;
+
+    if (previousMotion == 0) {
+        STOP();
+        return;
+    }
+
+    Timer();
+
+    switch (previousMotion) {
+      case 1:  moveBackward(duty);   break;
+      case 2:  moveForward(duty);    break;
+      case 3:  Backward_Left(duty);  break;
+      case 4:  Forward_Left(duty);   break;
+      case 5:  moveLeft(duty);       break;
+      case 6:  moveRight(duty);      break;
+      case 7:  moveRightSide(duty);  break;
+      case 8:  moveLeftSide(duty);   break;
+      case 9:  Backward_Right(duty); break;
+      case 10: Forward_Right(duty);  break;
+      default: break;
+    }
+
+    delay(TIM);
+    STOP();
 }
 
 void TungLam_Control_MotorV5::Tim() {
@@ -384,7 +389,7 @@ void TungLam_Control_MotorV5::Timer() {
     else if (duration < 1500) TIM = tim1500;
     else if (duration < 2000) TIM = tim2000;
     else if (duration < 3000) TIM = tim3000;
-    else if (duration > 3000) TIM = timAbove3000;
+    else TIM = timAbove3000;
     isMoving = false; // Tắt cờ
     startTime = 0;    // Reset startTime để chuẩn bị cho lần di chuyển tiếp theo
 }
@@ -427,21 +432,19 @@ void TungLam_Control_MotorV5::Lui(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint
 }
 
 void TungLam_Control_MotorV5::T_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    (void)duty2;
+    (void)duty4;
     Dir(1, Set);
-    Dir(3,Set);
-    Reset_45(false);
-  // Tiến Phải
-    PWM(duty1,duty2,duty3,duty4);
+    Dir(3, Set);
+    PWM(duty1, 0, duty3, 0);
 }
-
 void TungLam_Control_MotorV5::L_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    (void)duty1;
+    (void)duty3;
     Dir(2, !Set);
-    Dir(4,!Set);
-    Reset_45(false);
-  // Lùi Phải
-    PWM(duty1,duty2,duty3,duty4);
+    Dir(4, !Set);
+    PWM(0, duty2, 0, duty4);
 }
-
 void TungLam_Control_MotorV5::Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Dir(1, Set);
     Dir(2, Set);
@@ -478,18 +481,17 @@ void TungLam_Control_MotorV5::N_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     PWM(duty1,duty2,duty3,duty4);
 }
 
-void TungLam_Control_MotorV5::T_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) { 
+void TungLam_Control_MotorV5::T_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    (void)duty1;
+    (void)duty3;
     Dir(2, Set);
     Dir(4, Set);
-    Reset_45(true);
-  // Tiến Trái 
-    PWM(duty1,duty2,duty3,duty4);
+    PWM(0, duty2, 0, duty4);
 }
-
 void TungLam_Control_MotorV5::L_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    (void)duty2;
+    (void)duty4;
     Dir(1, !Set);
     Dir(3, !Set);
-    Reset_45(true);
-  // Lùi Trái
-    PWM(duty1,duty2,duty3,duty4);
+    PWM(duty1, 0, duty3, 0);
 }
