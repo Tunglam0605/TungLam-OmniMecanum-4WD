@@ -61,7 +61,7 @@ The implementation intentionally uses ATmega2560 registers directly for predicta
 - L298N dynamic bridge brake
 - **Non-blocking active reverse braking** to reduce inertia drift
 - Brake duration table compatible with the idea used in legacy V5
-- Automatic brake duty based on the previous drive command
+- User-controlled active reverse-brake strength via `ABS(duty)`
 - Legacy V5 class kept for backward compatibility
 
 ## Installation
@@ -172,39 +172,76 @@ This is the lowest public control layer and is independent of Mecanum/Omni mixin
 
 ## Active reverse braking
 
-The original V5 `ABS()` idea is retained, but V6 implements it as a **non-blocking active reverse brake**.
-
-```text
-DRIVE
-  |
-  | activeBrake()
-  v
-REVERSE BRAKE PULSE
-  |
-  | update(), timer expires
-  v
-COAST / STOP
-```
-
-Example:
+V6 intentionally preserves the original V5 braking behavior:
 
 ```cpp
-robot.activeBrake();       // returns immediately
+robot.ABS(duty);
+```
 
+The `duty` argument is the **actual reverse-brake PWM strength selected by the user (0..255)**. V6 does not automatically reduce or cap it against the previous driving PWM.
+
+For example:
+
+```cpp
+robot.ABS(180);   // strong reverse braking
+```
+
+The original time table is also preserved. Default values are:
+
+| Previous motion duration | Reverse-brake time |
+|---:|---:|
+| < 500 ms | 45 ms |
+| < 1000 ms | 65 ms |
+| < 1500 ms | 70 ms |
+| < 2000 ms | 75 ms |
+| < 3000 ms | 80 ms |
+| >= 3000 ms | 85 ms |
+
+The legacy configuration function is kept with the same name:
+
+```cpp
+robot.setTimABS(45, 65, 70, 75, 80, 85);
+```
+
+The only architectural change is that V6 is **non-blocking**.
+
+Legacy V5 concept:
+
+```text
+reverse(duty)
+delay(TIM)
+STOP
+```
+
+V6 concept:
+
+```text
+ABS(duty)
+   |
+   +--> reverse torque starts immediately
+   |
+   +--> function returns immediately
+              |
+         robot.update()
+              |
+        TIM expires
+              |
+            STOP
+```
+
+So `ABS(180)` still applies the requested reverse torque for the selected legacy time interval, but Arduino can continue handling Serial, sensors, joystick commands and other application logic while braking.
+
+```cpp
 void loop() {
-  robot.update();          // services the brake state machine
+  robot.update();  // services the non-blocking ABS timer
+
+  // Other application work can continue here.
 }
 ```
 
-You can also use the compatibility-friendly alias:
+`activeBrake(duty)` is provided as a descriptive alias of `ABS(duty)`.
 
-```cpp
-robot.ABS();
-```
-
-The automatic brake duty is limited and derived from the previous wheel command. The reverse pulse duration is selected from a configurable motion-time table.
-
-> Active reverse braking can generate high current. Tune brake duty and timing conservatively for your motor, gearbox, battery and L298N temperature.
+> Active reverse braking can generate high current. Tune `duty` and `setTimABS()` for the actual motor, gearbox, robot mass, battery and L298N temperature.
 
 ## Dynamic brake vs active reverse brake
 
@@ -227,10 +264,10 @@ Both H-bridge inputs are driven to the same state while EN is active. This elect
 **Active reverse brake**
 
 ```cpp
-robot.activeBrake();
+robot.ABS(180);
 ```
 
-The library briefly commands the opposite wheel direction to counter inertia, then automatically stops. This is stronger and must be tuned with more care.
+The library briefly commands the opposite wheel direction at the exact user-selected `duty`, then automatically stops when the configured legacy ABS time expires.
 
 ## Direction reversal protection
 

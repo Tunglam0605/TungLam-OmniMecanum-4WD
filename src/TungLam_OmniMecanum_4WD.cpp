@@ -23,10 +23,7 @@ TungLamDrive4WD::TungLamDrive4WD()
       brakeT1500_(70),
       brakeT2000_(75),
       brakeT3000_(80),
-      brakeTAbove3000_(85),
-      autoBrakeMinDuty_(70),
-      autoBrakeMaxDuty_(160),
-      autoBrakePercent_(60) {}
+      brakeTAbove3000_(85) {}
 
 void TungLamDrive4WD::begin(TungLamPwmMode pwmMode) {
   pwmMode_ = pwmMode;
@@ -234,7 +231,7 @@ void TungLamDrive4WD::dynamicBrake() {
   applied_ = {0, 0, 0, 0};
 }
 
-void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
+void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
   if (braking_) {
     return;
   }
@@ -249,16 +246,19 @@ void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
     return;
   }
 
+  // Preserve the exact wheel directions that were active before braking.
   preBrake_ = commanded_;
 
-  const uint32_t duration = moving_ ? (uint32_t)(millis() - motionStartMs_) : 0;
-  brakeDurationMs_ = selectBrakeDuration(duration);
+  // Legacy V5 timing behavior:
+  // <500, <1000, <1500, <2000, <3000, >=3000 ms
+  // selects one configurable reverse-pulse duration.
+  const uint32_t motionDuration =
+      moving_ ? (uint32_t)(millis() - motionStartMs_) : 0;
+  brakeDurationMs_ = selectBrakeDuration(motionDuration);
 
-  uint8_t selectedDuty = brakeDuty;
-  if (selectedDuty == 0) {
-    selectedDuty = selectAutoBrakeDuty();
-  }
-
+  // Important compatibility behavior:
+  // The user-provided duty is the actual reverse-brake strength.
+  // It is NOT automatically reduced or capped based on the previous PWM.
   Wheels reverse = {0, 0, 0, 0};
   const int16_t previous[4] = {
       preBrake_.m1, preBrake_.m2, preBrake_.m3, preBrake_.m4
@@ -268,12 +268,10 @@ void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
   };
 
   for (uint8_t i = 0; i < 4; ++i) {
-    const uint8_t previousDuty = magnitude(previous[i]);
-    const uint8_t wheelBrakeDuty = previousDuty < selectedDuty ? previousDuty : selectedDuty;
     if (previous[i] > 0) {
-      *target[i] = -(int16_t)wheelBrakeDuty;
+      *target[i] = -(int16_t)brakeDuty;
     } else if (previous[i] < 0) {
-      *target[i] = (int16_t)wheelBrakeDuty;
+      *target[i] = (int16_t)brakeDuty;
     }
   }
 
@@ -282,8 +280,8 @@ void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
   applyWheelsRaw(reverse);
 }
 
-void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
-  activeBrake(brakeDuty);
+void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
+  ABS(brakeDuty);
 }
 
 bool TungLamDrive4WD::isBraking() const {
@@ -296,12 +294,12 @@ void TungLamDrive4WD::cancelBrake() {
   }
 }
 
-void TungLamDrive4WD::setBrakeTimings(uint8_t t500,
-                                      uint8_t t1000,
-                                      uint8_t t1500,
-                                      uint8_t t2000,
-                                      uint8_t t3000,
-                                      uint8_t tAbove3000) {
+void TungLamDrive4WD::setTimABS(uint8_t t500,
+                                    uint8_t t1000,
+                                    uint8_t t1500,
+                                    uint8_t t2000,
+                                    uint8_t t3000,
+                                    uint8_t tAbove3000) {
   brakeT500_ = t500;
   brakeT1000_ = t1000;
   brakeT1500_ = t1500;
@@ -310,15 +308,13 @@ void TungLamDrive4WD::setBrakeTimings(uint8_t t500,
   brakeTAbove3000_ = tAbove3000;
 }
 
-void TungLamDrive4WD::setAutoBrakeDuty(uint8_t minDuty, uint8_t maxDuty, uint8_t percent) {
-  if (minDuty > maxDuty) {
-    const uint8_t temp = minDuty;
-    minDuty = maxDuty;
-    maxDuty = temp;
-  }
-  autoBrakeMinDuty_ = minDuty;
-  autoBrakeMaxDuty_ = maxDuty;
-  autoBrakePercent_ = percent > 100 ? 100 : percent;
+void TungLamDrive4WD::setBrakeTimings(uint8_t t500,
+                                      uint8_t t1000,
+                                      uint8_t t1500,
+                                      uint8_t t2000,
+                                      uint8_t t3000,
+                                      uint8_t tAbove3000) {
+  setTimABS(t500, t1000, t1500, t2000, t3000, tAbove3000);
 }
 
 void TungLamDrive4WD::applyWheelsRaw(const Wheels& wheels) {
@@ -405,23 +401,6 @@ uint8_t TungLamDrive4WD::selectBrakeDuration(uint32_t duration) const {
   if (duration < 2000UL) return brakeT2000_;
   if (duration < 3000UL) return brakeT3000_;
   return brakeTAbove3000_;
-}
-
-uint8_t TungLamDrive4WD::selectAutoBrakeDuty() const {
-  uint8_t maxPrevious = magnitude(preBrake_.m1);
-  const uint8_t d2 = magnitude(preBrake_.m2);
-  const uint8_t d3 = magnitude(preBrake_.m3);
-  const uint8_t d4 = magnitude(preBrake_.m4);
-
-  if (d2 > maxPrevious) maxPrevious = d2;
-  if (d3 > maxPrevious) maxPrevious = d3;
-  if (d4 > maxPrevious) maxPrevious = d4;
-
-  uint16_t scaled = ((uint16_t)maxPrevious * autoBrakePercent_) / 100U;
-  if (scaled < autoBrakeMinDuty_) scaled = autoBrakeMinDuty_;
-  if (scaled > autoBrakeMaxDuty_) scaled = autoBrakeMaxDuty_;
-  if (scaled > 255U) scaled = 255U;
-  return (uint8_t)scaled;
 }
 
 int16_t TungLamDrive4WD::clampWheel(int32_t value) {

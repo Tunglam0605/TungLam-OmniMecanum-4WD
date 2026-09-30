@@ -49,20 +49,29 @@ class TungLamDrive4WD {
   void coast();         // Alias of stop()
   void dynamicBrake();  // L298N bridge brake: EN high, both DIR inputs equal
 
-  // Non-blocking reverse braking. Call update() repeatedly from loop().
-  void activeBrake(uint8_t brakeDuty = 0);
-  void ABS(uint8_t brakeDuty = 0); // Compatibility-friendly alias
+  // Legacy-style active reverse braking, now non-blocking.
+  // brakeDuty is fully user-controlled (0..255), exactly like the old ABS(duty).
+  // Call update() repeatedly from loop() so the brake pulse can end on time.
+  void ABS(uint8_t brakeDuty);
+  void activeBrake(uint8_t brakeDuty); // Descriptive alias of ABS()
   bool isBraking() const;
   void cancelBrake();
 
-  // Reverse-brake tuning
+  // Legacy timing API kept unchanged.
+  void setTimABS(uint8_t t500,
+                 uint8_t t1000,
+                 uint8_t t1500,
+                 uint8_t t2000,
+                 uint8_t t3000,
+                 uint8_t tAbove3000);
+
+  // Newer descriptive alias; same timing table as setTimABS().
   void setBrakeTimings(uint8_t t500,
                        uint8_t t1000,
                        uint8_t t1500,
                        uint8_t t2000,
                        uint8_t t3000,
                        uint8_t tAbove3000);
-  void setAutoBrakeDuty(uint8_t minDuty, uint8_t maxDuty, uint8_t percent);
 
  private:
   struct Wheels {
@@ -94,9 +103,6 @@ class TungLamDrive4WD {
   uint8_t brakeT2000_;
   uint8_t brakeT3000_;
   uint8_t brakeTAbove3000_;
-  uint8_t autoBrakeMinDuty_;
-  uint8_t autoBrakeMaxDuty_;
-  uint8_t autoBrakePercent_;
 
   void initPwm();
   void applyWheelsRaw(const Wheels& wheels);
@@ -104,7 +110,6 @@ class TungLamDrive4WD {
   void writePwm(const Wheels& wheels);
   void writeAllPwm(uint8_t duty);
   uint8_t selectBrakeDuration(uint32_t motionDurationMs) const;
-  uint8_t selectAutoBrakeDuty() const;
 
   static int16_t clampWheel(int32_t value);
   static uint8_t magnitude(int16_t value);
