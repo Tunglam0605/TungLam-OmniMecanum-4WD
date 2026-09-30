@@ -6,13 +6,13 @@ on:
 
 jobs:
   compile-roboball-2024:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout motor library
         uses: actions/checkout@v5
 
-      - name: Install Arduino CLI
-        uses: arduino/setup-arduino-cli@v2
+      - name: Install pinned Arduino CLI
+        uses: ./.github/actions/setup-arduino-cli
 
       - name: Install AVR core and Servo
         run: |
