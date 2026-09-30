@@ -1,3 +1,130 @@
+/*==============================================================================
+  TUNGLAM OMNI / MECANUM 4WD MOTOR LIBRARY
+  ==============================================================================
+  TÁC GIẢ / AUTHOR
+  ------------------------------------------------------------------------------
+  Họ và tên : Nguyễn Khắc Tùng Lâm
+  Lớp       : DHTD16A2CL
+  MSSV       : 2210430016
+  Thương hiệu: Tung Lâm Automation
+
+  Thư viện gốc:
+    TungLam_Control_MotorV5
+    "Thư viện điều khiển xe 4 bánh đa hướng"
+
+  Thư viện hiện tại:
+    TungLam_OmniMecanum_4WD
+
+  Mục tiêu tương thích:
+    - Giữ nguyên API V5 để code robot cũ không phải sửa hàm.
+    - Bổ sung API hiện đại cho Mecanum-X / Omni-X.
+    - Giữ cơ chế ABS hãm ngược mạnh, cho phép người dùng tự đặt lực và thời gian.
+    - Cải tiến ABS legacy thành non-blocking mà code cũ không cần gọi update().
+
+  ==============================================================================
+  SƠ ĐỒ ĐẤU NỐI V5 GỐC
+  (Giữ lại nguyên tinh thần tài liệu gốc để người dùng cũ nhận biết ngay.)
+  ------------------------------------------------------------------------------
+
+  CHÂN PWM ------ CHÂN SỐ
+    EN BÁNH 1 ----- 5
+    EN BÁNH 2 ----- 6
+    EN BÁNH 3 ----- 7
+    EN BÁNH 4 ----- 8
+
+  CHÂN CHIỀU DIR (BÁNH) ---- CHÂN CHIỀU TIẾN ---- CHÂN CHIỀU LÙI
+              DIR1                    30                   31
+              DIR2                    32                   33
+              DIR3                    34                   35
+              DIR4                    36                   37
+
+  ==============================================================================
+  MAPPING THỰC TẾ THEO CODE AVR HIỆN TẠI
+  ------------------------------------------------------------------------------
+  Arduino Mega 2560 ánh xạ PORTC như sau:
+
+    D30 = PC7     D31 = PC6
+    D32 = PC5     D33 = PC4
+    D34 = PC3     D35 = PC2
+    D36 = PC1     D37 = PC0
+
+  Implementation thực tế của thư viện:
+
+    Motor   PWM / EN       CHIỀU TIẾN (+)       CHIỀU LÙI (-)
+    -----   -------------  -------------------  -------------------
+    M1      D5  / OC3A     D30 / PC7            D31 / PC6
+    M2      D6  / OC4A     D32 / PC5            D33 / PC4
+    M3      D7  / OC4B     D34 / PC3            D35 / PC2
+    M4      D8  / OC4C     D37 / PC0            D36 / PC1
+
+  LƯU Ý QUAN TRỌNG:
+    Comment V5 lịch sử ghi DIR4 "36 tiến / 37 lùi", nhưng code V5 thực tế
+    dùng PC0 cho chiều tiến và PC1 cho chiều lùi. Trên Arduino Mega:
+      PC0 = D37
+      PC1 = D36
+    Bảng "mapping thực tế" phía trên phản ánh đúng hành vi của code.
+
+  ==============================================================================
+  QUY ƯỚC THỨ TỰ 4 BÁNH - API HIỆN ĐẠI
+  ------------------------------------------------------------------------------
+
+                        ĐẦU XE / FRONT
+                             +vx
+                              ^
+                              |
+                 M1                         M3
+            FRONT-LEFT                 FRONT-RIGHT
+               D5                         D7
+
+                 M2                         M4
+             REAR-LEFT                  REAR-RIGHT
+               D6                         D8
+                              |
+                       ĐUÔI XE / REAR
+
+    +vx : tiến / forward
+    -vx : lùi / backward
+    +vy : ngang phải / strafe right
+    -vy : ngang trái / strafe left
+    +wz : quay phải, chiều kim đồng hồ / clockwise
+    -wz : quay trái, ngược chiều kim đồng hồ / counter-clockwise
+
+  Quy ước trên là thứ tự logic dùng bởi mixer Mecanum-X và Omni-X hiện đại.
+  Với robot V5 cũ đã đấu dây và chạy ổn định, nên giữ nguyên wiring thực tế
+  của xe cũ; compatibility API sẽ giữ nguyên hành vi V5.
+
+  ==============================================================================
+  QUICK CLASS REFERENCE
+  ------------------------------------------------------------------------------
+
+  Code cũ / Legacy:
+    #include <TungLam_Control_MotorV5.h>
+    TungLam_Control_MotorV5 motor;
+
+  Code mới / Modern:
+    #include <TungLam_OmniMecanum_4WD.h>
+    TungLamDrive4WD motor;
+
+  ==============================================================================
+  ABS HÃM NGƯỢC / ACTIVE REVERSE BRAKE
+  ------------------------------------------------------------------------------
+
+  Legacy:
+    motor.ABS(duty);
+    motor.setTimABS(45, 65, 70, 75, 80, 85);
+
+    - duty: lực hãm ngược do người dùng tự chọn 0..255.
+    - setTimABS(): thời gian hãm theo 6 khoảng thời gian chạy.
+    - Legacy ABS chạy non-blocking bằng Timer3 overflow interrupt.
+    - Code V5 cũ KHÔNG cần thêm update().
+
+  Modern:
+    motor.ABS(duty);
+    motor.update();  // gọi liên tục trong loop() khi dùng modern ABS.
+
+  ==============================================================================
+*/
+
 /**
  * @file TungLam_OmniMecanum_4WD.h
  * @brief Public API for the TungLam 4-wheel holonomic motor library.
