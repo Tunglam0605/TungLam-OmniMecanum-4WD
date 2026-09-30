@@ -1,3 +1,23 @@
+/**
+ * @file TungLam_OmniMecanum_4WD.cpp
+ * @brief Hardware implementation for TungLam_OmniMecanum_4WD.
+ *
+ * @details
+ * This translation unit contains both:
+ * - the modern TungLamDrive4WD implementation; and
+ * - the source-compatible TungLam_Control_MotorV5 implementation.
+ *
+ * Hardware ownership on Arduino Mega 2560:
+ * - PORTC PC0..PC7: direction lines D30..D37;
+ * - Timer3 OC3A: M1 PWM on D5;
+ * - Timer4 OC4A/OC4B/OC4C: M2/M3/M4 PWM on D6/D7/D8;
+ * - Timer3 overflow interrupt: temporary one-shot scheduler for legacy ABS.
+ *
+ * The code intentionally uses direct AVR registers to minimize overhead and
+ * preserve deterministic PWM behavior.
+ */
+
+// Direct-register pin/timer mapping below is specific to the Mega-class AVR.
 #if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__)
 #error "TungLam_OmniMecanum_4WD requires Arduino Mega / ATmega2560 or ATmega1280 timer and PORT layout."
 #endif
@@ -5,6 +25,17 @@
 #include "TungLam_OmniMecanum_4WD.h"
 #include <avr/interrupt.h>
 
+// ============================================================================
+// MODERN TUNGLAMDRIVE4WD IMPLEMENTATION
+// ============================================================================
+
+/**
+ * @brief Initialize all software state to safe defaults.
+ *
+ * No AVR register is touched here; hardware configuration is deferred to
+ * begin(). This keeps global/static construction safe before Arduino runtime
+ * initialization is complete.
+ */
 TungLamDrive4WD::TungLamDrive4WD()
     : chassis_(TungLamChassis::MecanumX),
       pwmMode_(TungLamPwmMode::High7k8Hz),
@@ -26,25 +57,37 @@ TungLamDrive4WD::TungLamDrive4WD()
       brakeT3000_(80),
       brakeTAbove3000_(85) {}
 
+/**
+ * @brief Configure direction GPIO, PWM GPIO and Timer3/Timer4.
+ *
+ * Direction outputs are cleared before PWM is initialized so the H-bridges
+ * start from a deterministic coast/stop state.
+ */
 void TungLamDrive4WD::begin(TungLamPwmMode pwmMode) {
-  pwmMode_ = pwmMode;
+  pwmMode_ = pwmMode;  // Remember requested PWM profile for later decisions.
 
   // DIR pins D30..D37 = PC7..PC0.
-  DDRC = 0xFF;
-  PORTC = 0x00;
+  DDRC = 0xFF;   // PC0..PC7 -> outputs: all eight L298N direction inputs.
+  PORTC = 0x00;  // Start with every direction input low (safe neutral pattern).
 
   // PWM pins:
   // D5  = PE3 / OC3A
   // D6  = PH3 / OC4A
   // D7  = PH4 / OC4B
   // D8  = PH5 / OC4C
-  DDRE |= (1 << PE3);
-  DDRH |= (1 << PH3) | (1 << PH4) | (1 << PH5);
+  DDRE |= (1 << PE3);                           // D5 / OC3A / M1 EN -> output.
+  DDRH |= (1 << PH3) | (1 << PH4) | (1 << PH5); // D6/D7/D8 / OC4A/B/C -> outputs.
 
   initPwm();
   stop();
 }
 
+/**
+ * @brief Program Timer3 and Timer4 for the selected motor PWM frequency.
+ *
+ * Timer interrupt masks are cleared first because the library owns these
+ * timers. PWM compare registers are forced to zero after configuration.
+ */
 void TungLamDrive4WD::initPwm() {
   TCCR3A = 0;
   TCCR3B = 0;
@@ -72,42 +115,63 @@ void TungLamDrive4WD::initPwm() {
     ICR4 = 255;
   }
 
-  writeAllPwm(0);
+  writeAllPwm(0);  // Never leave stale compare values active after timer setup.
 }
 
+/**
+ * @brief Service the modern non-blocking reverse-brake timeout.
+ *
+ * Uses unsigned subtraction so millis() wrap-around remains safe.
+ */
 void TungLamDrive4WD::update() {
   if (!braking_) {
     return;
   }
 
   if ((uint32_t)(millis() - brakeStartMs_) >= brakeDurationMs_) {
-    braking_ = false;
-    moving_ = false;
+    braking_ = false;       // Mark brake state complete before changing outputs.
+    moving_ = false;        // No commanded motion remains after the brake pulse.
     motionStartMs_ = 0;
     commanded_ = {0, 0, 0, 0};
     applyWheelsRaw(commanded_);
   }
 }
 
+/** @brief Select which built-in holonomic mixer drive() will use. */
 void TungLamDrive4WD::setChassis(TungLamChassis chassis) {
   chassis_ = chassis;
 }
 
+/** @brief Return the currently selected chassis mixer. */
 TungLamChassis TungLamDrive4WD::chassis() const {
   return chassis_;
 }
 
+/**
+ * @brief Configure physical motor polarity correction.
+ *
+ * Inversion is applied only in the hardware-output layer, leaving kinematics
+ * and application commands in a consistent logical coordinate system.
+ */
 void TungLamDrive4WD::setMotorInverted(uint8_t wheel, bool inverted) {
   if (wheel < 1 || wheel > 4) {
     return;
   }
-  inverted_[wheel - 1] = inverted;
+  inverted_[wheel - 1] = inverted;  // API is 1-based; storage is 0-based.
 }
 
+/** @brief Configure the PWM-off dead-time used before direction changes. */
 void TungLamDrive4WD::setDirectionDeadTimeUs(uint16_t deadTimeUs) {
-  deadTimeUs_ = deadTimeUs;
+  deadTimeUs_ = deadTimeUs;  // Used only when the electrical sign state changes.
 }
 
+/**
+ * @brief Apply a new raw signed four-wheel command.
+ *
+ * This function is the central state-transition point for the modern API:
+ * it clamps demands, cancels active braking when a new command arrives,
+ * exits dynamic braking safely, updates motion timing and writes hardware.
+ */
 void TungLamDrive4WD::setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4) {
   Wheels next = {
       clampWheel(m1),
@@ -131,23 +195,24 @@ void TungLamDrive4WD::setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4) 
     dynamicBraking_ = false;
   }
 
-  const bool wasMoving = anyMoving(commanded_);
-  const bool willMove = anyMoving(next);
-  const bool changedDirection = directionChanged(commanded_, next);
+  const bool wasMoving = anyMoving(commanded_);  // State before accepting this command.
+  const bool willMove = anyMoving(next);          // State requested by this command.
+  const bool changedDirection = directionChanged(commanded_, next);  // Used to restart motion timing.
 
   if (willMove && (!wasMoving || changedDirection)) {
-    motionStartMs_ = millis();
+    motionStartMs_ = millis();  // Start a fresh motion-duration window for ABS timing.
   }
 
-  commanded_ = next;
-  moving_ = willMove;
-  applyWheelsRaw(next);
+  commanded_ = next;       // Store logical command before sending it to hardware.
+  moving_ = willMove;      // Keep high-level state synchronized with commanded_.
+  applyWheelsRaw(next);     // Perform inversion, dead-time, DIR and PWM output.
 
   if (!willMove) {
     motionStartMs_ = 0;
   }
 }
 
+/** @brief Dispatch a Cartesian command to the selected chassis mixer. */
 void TungLamDrive4WD::drive(int16_t vx, int16_t vy, int16_t wz) {
   if (chassis_ == TungLamChassis::OmniX) {
     driveOmniX(vx, vy, wz);
@@ -156,6 +221,11 @@ void TungLamDrive4WD::drive(int16_t vx, int16_t vy, int16_t wz) {
   }
 }
 
+/**
+ * @brief Convert Cartesian chassis demand into canonical Mecanum-X wheel demand.
+ *
+ * Wheel order: M1 front-left, M2 rear-left, M3 front-right, M4 rear-right.
+ */
 void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
   // Canonical Mecanum-X wheel order:
   // M1 = front-left, M2 = rear-left, M3 = front-right, M4 = rear-right.
@@ -169,6 +239,12 @@ void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
   setWheels(out.m1, out.m2, out.m3, out.m4);
 }
 
+/**
+ * @brief Convert Cartesian chassis demand into canonical four-wheel Omni-X demand.
+ *
+ * The matrix assumes the documented X-drive wheel orientation. Real hardware
+ * must be commissioned for wheel order and polarity before high-speed use.
+ */
 void TungLamDrive4WD::driveOmniX(int16_t vx, int16_t vy, int16_t wz) {
   // Canonical four-wheel Omni X-drive.
   // Wheel rolling directions are tangent to the X-drive layout.
@@ -182,30 +258,42 @@ void TungLamDrive4WD::driveOmniX(int16_t vx, int16_t vy, int16_t wz) {
   setWheels(out.m1, out.m2, out.m3, out.m4);
 }
 
+/** @brief Generate a pure +vx command. */
 void TungLamDrive4WD::forward(uint8_t duty) {
   drive((int16_t)duty, 0, 0);
 }
 
+/** @brief Generate a pure -vx command. */
 void TungLamDrive4WD::backward(uint8_t duty) {
   drive(-(int16_t)duty, 0, 0);
 }
 
+/** @brief Generate a pure +vy command. */
 void TungLamDrive4WD::strafeRight(uint8_t duty) {
   drive(0, (int16_t)duty, 0);
 }
 
+/** @brief Generate a pure -vy command. */
 void TungLamDrive4WD::strafeLeft(uint8_t duty) {
   drive(0, -(int16_t)duty, 0);
 }
 
+/** @brief Generate a pure +wz clockwise command. */
 void TungLamDrive4WD::rotateRight(uint8_t duty) {
   drive(0, 0, (int16_t)duty);
 }
 
+/** @brief Generate a pure -wz counter-clockwise command. */
 void TungLamDrive4WD::rotateLeft(uint8_t duty) {
   drive(0, 0, -(int16_t)duty);
 }
 
+/**
+ * @brief Coast-stop and reset all modern motion/brake state.
+ *
+ * The zero logical wheel vector is passed through the same safe output path as
+ * a normal command, ensuring PWM is removed before any direction-state change.
+ */
 void TungLamDrive4WD::stop() {
   braking_ = false;
   dynamicBraking_ = false;
@@ -215,10 +303,17 @@ void TungLamDrive4WD::stop() {
   applyWheelsRaw(commanded_);
 }
 
+/** @brief Explicit coast-stop alias. */
 void TungLamDrive4WD::coast() {
   stop();
 }
 
+/**
+ * @brief Apply L298N bridge/dynamic braking.
+ *
+ * PORTC=0 makes both inputs of each H-bridge equal. With EN/PWM driven high,
+ * this electrically damps the motor. It is not the strong reverse-torque ABS.
+ */
 void TungLamDrive4WD::dynamicBrake() {
   braking_ = false;
   dynamicBraking_ = true;
@@ -232,6 +327,13 @@ void TungLamDrive4WD::dynamicBrake() {
   applied_ = {0, 0, 0, 0};
 }
 
+/**
+ * @brief Start the modern strong active reverse-brake pulse.
+ *
+ * Each moving wheel is commanded with the opposite sign at the exact
+ * user-selected brakeDuty. The pulse duration comes from the six-stage table.
+ * update() is responsible for ending this modern brake pulse.
+ */
 void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
   if (braking_) {
     return;
@@ -248,7 +350,7 @@ void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
   }
 
   // Preserve the exact wheel directions that were active before braking.
-  preBrake_ = commanded_;
+  preBrake_ = commanded_;  // Snapshot signs before reverse torque replaces the command.
 
   // Legacy V5 timing behavior:
   // <500, <1000, <1500, <2000, <3000, >=3000 ms
@@ -276,25 +378,34 @@ void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
     }
   }
 
-  braking_ = true;
-  brakeStartMs_ = millis();
-  applyWheelsRaw(reverse);
+  braking_ = true;             // update() now owns the brake deadline.
+  brakeStartMs_ = millis();    // Non-blocking brake pulse start timestamp.
+  applyWheelsRaw(reverse);     // Safe output layer inserts dead-time before reversing.
 }
 
+/** @brief Descriptive alias for ABS(brakeDuty). */
 void TungLamDrive4WD::activeBrake(uint8_t brakeDuty) {
   ABS(brakeDuty);
 }
 
+/** @brief Report whether a modern active reverse-brake pulse is in progress. */
 bool TungLamDrive4WD::isBraking() const {
   return braking_;
 }
 
+/** @brief Cancel active/dynamic braking and return the bridge to coast-stop. */
 void TungLamDrive4WD::cancelBrake() {
   if (braking_ || dynamicBraking_) {
     stop();
   }
 }
 
+/**
+ * @brief Store the six active-brake duration thresholds.
+ *
+ * Values are milliseconds and deliberately remain uint8_t for V5-compatible
+ * timing semantics and compact AVR RAM usage.
+ */
 void TungLamDrive4WD::setTimABS(uint8_t t500,
                                     uint8_t t1000,
                                     uint8_t t1500,
@@ -309,6 +420,7 @@ void TungLamDrive4WD::setTimABS(uint8_t t500,
   brakeTAbove3000_ = tAbove3000;
 }
 
+/** @brief Descriptive wrapper around the compatibility-named setTimABS(). */
 void TungLamDrive4WD::setBrakeTimings(uint8_t t500,
                                       uint8_t t1000,
                                       uint8_t t1500,
@@ -318,8 +430,19 @@ void TungLamDrive4WD::setBrakeTimings(uint8_t t500,
   setTimABS(t500, t1000, t1500, t2000, t3000, tAbove3000);
 }
 
+/**
+ * @brief Convert logical wheel commands to safe physical H-bridge outputs.
+ *
+ * Sequence:
+ * 1. copy logical commands;
+ * 2. apply per-motor inversion;
+ * 3. detect any electrical direction-state change;
+ * 4. force PWM to zero and wait dead-time when needed;
+ * 5. update direction bits;
+ * 6. restore requested PWM magnitude.
+ */
 void TungLamDrive4WD::applyWheelsRaw(const Wheels& wheels) {
-  Wheels physical = wheels;
+  Wheels physical = wheels;  // Keep caller's logical vector unchanged.
 
   int16_t* values[4] = {
       &physical.m1, &physical.m2, &physical.m3, &physical.m4
@@ -337,7 +460,7 @@ void TungLamDrive4WD::applyWheelsRaw(const Wheels& wheels) {
       physical.m1, physical.m2, physical.m3, physical.m4
   };
 
-  bool directionStateChanged = false;
+  bool directionStateChanged = false;  // True if any physical wheel changes sign/zero state.
   for (uint8_t i = 0; i < 4; ++i) {
     if (signOf(oldValue[i]) != signOf(newValue[i])) {
       directionStateChanged = true;
@@ -353,11 +476,16 @@ void TungLamDrive4WD::applyWheelsRaw(const Wheels& wheels) {
     }
   }
 
-  writeDirectionPattern(physical);
-  writePwm(physical);
-  applied_ = physical;
+  writeDirectionPattern(physical);  // Change bridge input logic only after PWM-off dead-time.
+  writePwm(physical);               // Re-enable requested torque magnitude.
+  applied_ = physical;              // Cache actual physical state for the next transition.
 }
 
+/**
+ * @brief Encode signed wheel directions into the complete PORTC bit pattern.
+ *
+ * A zero wheel command leaves both direction bits low for that wheel.
+ */
 void TungLamDrive4WD::writeDirectionPattern(const Wheels& wheels) {
   uint8_t pattern = 0;
 
@@ -378,9 +506,10 @@ void TungLamDrive4WD::writeDirectionPattern(const Wheels& wheels) {
   if (wheels.m4 > 0) pattern |= (1 << PC0);
   else if (wheels.m4 < 0) pattern |= (1 << PC1);
 
-  PORTC = pattern;
+  PORTC = pattern;  // Single atomic 8-bit write updates all four DIR pairs together.
 }
 
+/** @brief Write per-wheel absolute PWM magnitudes to Timer3/Timer4 OCR registers. */
 void TungLamDrive4WD::writePwm(const Wheels& wheels) {
   OCR3A = magnitude(wheels.m1);
   OCR4A = magnitude(wheels.m2);
@@ -388,6 +517,7 @@ void TungLamDrive4WD::writePwm(const Wheels& wheels) {
   OCR4C = magnitude(wheels.m4);
 }
 
+/** @brief Write one common PWM duty to all four drive-motor compare registers. */
 void TungLamDrive4WD::writeAllPwm(uint8_t duty) {
   OCR3A = duty;
   OCR4A = duty;
@@ -395,6 +525,7 @@ void TungLamDrive4WD::writeAllPwm(uint8_t duty) {
   OCR4C = duty;
 }
 
+/** @brief Select one reverse-brake duration from the six legacy-compatible ranges. */
 uint8_t TungLamDrive4WD::selectBrakeDuration(uint32_t duration) const {
   if (duration < 500UL) return brakeT500_;
   if (duration < 1000UL) return brakeT1000_;
@@ -404,12 +535,14 @@ uint8_t TungLamDrive4WD::selectBrakeDuration(uint32_t duration) const {
   return brakeTAbove3000_;
 }
 
+/** @brief Saturate one signed wheel demand to the legal -255..255 range. */
 int16_t TungLamDrive4WD::clampWheel(int32_t value) {
   if (value > 255) return 255;
   if (value < -255) return -255;
   return (int16_t)value;
 }
 
+/** @brief Convert a signed wheel demand to a PWM-safe 0..255 magnitude. */
 uint8_t TungLamDrive4WD::magnitude(int16_t value) {
   if (value < 0) {
     value = -value;
@@ -417,16 +550,24 @@ uint8_t TungLamDrive4WD::magnitude(int16_t value) {
   return value > 255 ? 255 : (uint8_t)value;
 }
 
+/** @brief Convert a signed value to the three-state sign representation -1/0/+1. */
 int8_t TungLamDrive4WD::signOf(int16_t value) {
   if (value > 0) return 1;
   if (value < 0) return -1;
   return 0;
 }
 
+/** @brief Return true when any wheel in the vector has a non-zero demand. */
 bool TungLamDrive4WD::anyMoving(const Wheels& wheels) {
   return wheels.m1 != 0 || wheels.m2 != 0 || wheels.m3 != 0 || wheels.m4 != 0;
 }
 
+/**
+ * @brief Detect a true non-zero sign reversal between two logical wheel vectors.
+ *
+ * Transitions through zero are not counted here; hardware-level sign changes
+ * are handled separately by applyWheelsRaw().
+ */
 bool TungLamDrive4WD::directionChanged(const Wheels& a, const Wheels& b) {
   const int16_t av[4] = {a.m1, a.m2, a.m3, a.m4};
   const int16_t bv[4] = {b.m1, b.m2, b.m3, b.m4};
@@ -441,6 +582,12 @@ bool TungLamDrive4WD::directionChanged(const Wheels& a, const Wheels& b) {
   return false;
 }
 
+/**
+ * @brief Proportionally normalize a four-wheel vector into the PWM range.
+ *
+ * Scaling all four values by the same factor preserves the requested motion
+ * vector better than clipping individual wheels independently.
+ */
 TungLamDrive4WD::Wheels TungLamDrive4WD::normalize(int32_t m1,
                                                    int32_t m2,
                                                    int32_t m3,
@@ -470,37 +617,63 @@ TungLamDrive4WD::Wheels TungLamDrive4WD::normalize(int32_t m1,
 }
 
 // ============================================================================
-// Legacy TungLam_Control_MotorV5 implementation
+// LEGACY TUNGLAM_CONTROL_MOTORV5 IMPLEMENTATION
 // ============================================================================
-// Kept in the same translation unit as the modern core to keep src/ compact.
-// Public behavior/signatures remain compatible with existing V5 sketches.
+//
+// This code intentionally keeps the historical V5 movement mapping and public
+// method signatures. The implementation is colocated with the modern core only
+// to keep the Arduino library source tree compact.
+//
+// Legacy ABS timing differs internally from the modern class:
+// - legacy class: Timer3 overflow ISR ends ABS automatically;
+// - modern class: update() polls the brake deadline.
+//
+// IMPORTANT: Timer3 overflow interrupt is enabled only while a legacy ABS pulse
+// is active, then disabled immediately when the pulse completes or is cancelled.
+//
 
 namespace {
-volatile bool gLegacyAbsActive = false;
-volatile uint16_t gLegacyAbsOverflowsRemaining = 0;
+// Shared ISR state must be volatile because it is accessed from both normal
+// sketch context and TIMER3_OVF_vect interrupt context.
+volatile bool gLegacyAbsActive = false;               // True only during a legacy ABS pulse.
+volatile uint16_t gLegacyAbsOverflowsRemaining = 0;   // Remaining Timer3 PWM periods before STOP.
+
+/**
+ * @brief Stop legacy ABS directly from interrupt context.
+ *
+ * Only direct register writes are used here: no delay(), millis(), Serial or
+ * other non-ISR-safe Arduino services are called.
+ */
 
 inline void legacyAbsStopHardwareFromISR() {
-    OCR3A = 0;
-    OCR4A = 0;
-    OCR4B = 0;
-    OCR4C = 0;
-    PORTC = 0x00;
+    OCR3A = 0;     // M1: remove drive torque immediately.
+    OCR4A = 0;     // M2: remove drive torque immediately.
+    OCR4B = 0;     // M3: remove drive torque immediately.
+    OCR4C = 0;     // M4: remove drive torque immediately.
+    PORTC = 0x00;  // Clear all eight L298N direction inputs.
 
-    TIMSK3 &= ~(1 << TOIE3);
+    TIMSK3 &= ~(1 << TOIE3);  // Disable Timer3 overflow IRQ after/canceling one-shot.
     gLegacyAbsOverflowsRemaining = 0;
     gLegacyAbsActive = false;
 }
 
+/**
+ * @brief Cancel the legacy ABS one-shot safely from normal execution context.
+ * @param stopOutputs When true, also force PWM and direction outputs to zero.
+ *
+ * SREG is saved/restored so this helper does not accidentally change the
+ * caller's global interrupt-enable state.
+ */
 void cancelLegacyAbs(bool stopOutputs) {
-    const uint8_t oldSreg = SREG;
-    cli();
+    const uint8_t oldSreg = SREG;  // Preserve caller's complete AVR status register.
+    cli();  // Make shared ISR-state update atomic.
 
     const bool wasActive = gLegacyAbsActive;
     TIMSK3 &= ~(1 << TOIE3);
     gLegacyAbsOverflowsRemaining = 0;
     gLegacyAbsActive = false;
 
-    SREG = oldSreg;
+    SREG = oldSreg;  // Restore interrupt-enable state exactly as it was.
 
     if (stopOutputs && wasActive) {
         OCR3A = 0;
@@ -511,6 +684,12 @@ void cancelLegacyAbs(bool stopOutputs) {
     }
 }
 
+/**
+ * @brief Convert a requested brake time in milliseconds to Timer3 overflows.
+ *
+ * Integer arithmetic rounds upward so the reverse pulse is never terminated
+ * earlier than the requested duration by truncation.
+ */
 uint16_t legacyAbsOverflowCount(uint8_t brakeMs, uint8_t pwmMode) {
     if (brakeMs == 0) {
         return 0;
@@ -526,8 +705,14 @@ uint16_t legacyAbsOverflowCount(uint8_t brakeMs, uint8_t pwmMode) {
     return (uint16_t)(((uint32_t)brakeMs * 125UL + 127UL) / 128UL);
 }
 
+/**
+ * @brief Arm Timer3 overflow interrupt as a one-shot ABS timeout source.
+ *
+ * Timer3 is already running as M1 PWM, so this adds timing without consuming
+ * another hardware timer. The overflow IRQ is disabled again at completion.
+ */
 void startLegacyAbsOneShot(uint8_t brakeMs, uint8_t pwmMode) {
-    const uint16_t overflows = legacyAbsOverflowCount(brakeMs, pwmMode);
+    const uint16_t overflows = legacyAbsOverflowCount(brakeMs, pwmMode);  // Convert ms to PWM periods.
 
     if (overflows == 0) {
         OCR3A = 0;
@@ -541,17 +726,23 @@ void startLegacyAbsOneShot(uint8_t brakeMs, uint8_t pwmMode) {
     const uint8_t oldSreg = SREG;
     cli();
 
-    gLegacyAbsOverflowsRemaining = overflows;
-    gLegacyAbsActive = true;
+    gLegacyAbsOverflowsRemaining = overflows;  // ISR decrements this once per Timer3 overflow.
+    gLegacyAbsActive = true;                   // Publish active state before enabling the IRQ.
 
     // Clear any stale Timer3 overflow flag, then arm only the overflow IRQ.
-    TIFR3 = (1 << TOV3);
-    TIMSK3 |= (1 << TOIE3);
+    TIFR3 = (1 << TOV3);      // Write-one-to-clear any pending overflow flag.
+    TIMSK3 |= (1 << TOIE3);   // Arm Timer3 overflow interrupt for this brake pulse.
 
     SREG = oldSreg;
 }
 }
 
+/**
+ * @brief Timer3 overflow ISR used only while legacy ABS is active.
+ *
+ * Each PWM overflow decrements the one-shot counter. At zero, all drive PWM
+ * outputs and direction bits are cleared and the interrupt disables itself.
+ */
 ISR(TIMER3_OVF_vect) {
     if (!gLegacyAbsActive) {
         TIMSK3 &= ~(1 << TOIE3);
@@ -559,7 +750,7 @@ ISR(TIMER3_OVF_vect) {
     }
 
     if (gLegacyAbsOverflowsRemaining > 0) {
-        --gLegacyAbsOverflowsRemaining;
+        --gLegacyAbsOverflowsRemaining;  // One PWM period of brake time has elapsed.
     }
 
     if (gLegacyAbsOverflowsRemaining == 0) {
@@ -567,9 +758,17 @@ ISR(TIMER3_OVF_vect) {
     }
 }
 
+/**
+ * @brief Construct the legacy compatibility controller.
+ */
 TungLam_Control_MotorV5::TungLam_Control_MotorV5() {
-  // Constructor để khởi tạo các giá trị mặc định nếu cần
+  // No hardware action here; Mode0()/Mode1() performs explicit initialization.
 }
+/**
+ * @brief Historical diagonal-direction cleanup helper retained for compatibility.
+ *
+ * The helper clears selected PORTC direction bits only; it does not drive PWM.
+ */
 void TungLam_Control_MotorV5:: Reset_45 (bool Off)
 {
   // Legacy helper kept for compatibility. All four DIR pairs are on PORTC.
@@ -579,6 +778,12 @@ void TungLam_Control_MotorV5:: Reset_45 (bool Off)
     PORTC &= ~((1 << PC2) | (1 << PC3) | (1 << PC6) | (1 << PC7));
   }
 }
+/**
+ * @brief Write one legacy wheel-direction pair on PORTC.
+ *
+ * Before changing direction, any asynchronous legacy ABS pulse is cancelled so
+ * an explicit movement command always takes immediate ownership of the motors.
+ */
 void TungLam_Control_MotorV5::Dir(uint8_t BanhNumber, bool Set)
 {
   // Any new explicit motor command takes control immediately from a pending ABS pulse.
@@ -640,6 +845,11 @@ void TungLam_Control_MotorV5::Dir(uint8_t BanhNumber, bool Set)
   }
 }
 
+/**
+ * @brief Clear the control and interrupt registers of Timer1..Timer4.
+ *
+ * This preserves the original direct-register initialization model.
+ */
 void TungLam_Control_MotorV5::Reset_Timer(uint8_t timerNumber)
 {
     switch (timerNumber)
@@ -679,7 +889,13 @@ void TungLam_Control_MotorV5::Reset_Timer(uint8_t timerNumber)
 }
 
 
-void TungLam_Control_MotorV5::Mode1() // Cài đặt tần số cao cho 4 chân 5,6,7,8 Mode riêng để điều khiển xe 4 bánh đa hướng với cài đặt các chân chiều và chân PWM
+/**
+ * @brief Configure legacy high-frequency PWM mode (~7.8125 kHz).
+ *
+ * Timer3 drives M1 on D5 and Timer4 drives M2..M4 on D6..D8.
+ * Existing pending ABS state is cancelled before timer reconfiguration.
+ */
+void TungLam_Control_MotorV5::Mode1()
  {
     cancelLegacyAbs(true);
     pwmMode = 1;
@@ -708,7 +924,12 @@ void TungLam_Control_MotorV5::Mode1() // Cài đặt tần số cao cho 4 chân 
     OCR4B = 0; // Chân 7
     OCR4C = 0; // Chân 8
 }
-void TungLam_Control_MotorV5::Mode0() // Cài đặt tần số thấp cho 4 chân 5,6,7,8 Mode riêng để điều khiển xe 4 bánh đa hướng với cài đặt các chân chiều và chân PWM
+/**
+ * @brief Configure legacy low-frequency PWM mode (~976.56 Hz).
+ *
+ * TOP is fixed at 255 via ICR3/ICR4 and the timer prescaler is 64.
+ */
+void TungLam_Control_MotorV5::Mode0()
   {
     cancelLegacyAbs(true);
     pwmMode = 0;
@@ -723,8 +944,7 @@ void TungLam_Control_MotorV5::Mode0() // Cài đặt tần số thấp cho 4 ch�
       Reset_Timer(3);
       Reset_Timer(4);
 
-    // Cấu hình Timer 3 cho chân 5 (OC3A)
-      // Fast PWM với TOP = ICR3
+    // Cấu hình Timer 3 cho chân 5 (OC3A)      // Fast PWM mode with ICR3 as TOP.
       TCCR3A |= (1 << WGM31);
       TCCR3B |= (1 << WGM32) | (1 << WGM33);
 
@@ -737,8 +957,7 @@ void TungLam_Control_MotorV5::Mode0() // Cài đặt tần số thấp cho 4 ch�
       // Đặt TOP và giá trị PWM ban đầu
       ICR3 = 255;  // TOP
 
-    // Cấu hình Timer 4 cho chân 6, 7, 8 (OC4A, OC4B, OC4C)
-      // Fast PWM với TOP = ICR4
+    // Cấu hình Timer 4 cho chân 6, 7, 8 (OC4A, OC4B, OC4C)      // Fast PWM mode with ICR4 as TOP.
       TCCR4A |= (1 << WGM41);
       TCCR4B |= (1 << WGM42) | (1 << WGM43);
 
@@ -756,7 +975,13 @@ void TungLam_Control_MotorV5::Mode0() // Cài đặt tần số thấp cho 4 ch�
       OCR4B = 0; // Chân 7
       OCR4C = 0; // Chân 8
 }
-void TungLam_Control_MotorV5:: Init_Timer1(uint8_t duty11, uint8_t duty12) // Cài đặt Timer1 tần số thấp cho chân 11 12 chuyên dùng cho Planet có PID hộp
+/**
+ * @brief Configure auxiliary Timer1 PWM channels D11/D12.
+ *
+ * This function is preserved for old robot mechanisms outside the four-wheel
+ * drive system. It resets Timer1 before applying the historical configuration.
+ */
+void TungLam_Control_MotorV5:: Init_Timer1(uint8_t duty11, uint8_t duty12)
 {
     // Động cơ chân 11 12
       Reset_Timer(1);
@@ -773,7 +998,12 @@ void TungLam_Control_MotorV5:: Init_Timer1(uint8_t duty11, uint8_t duty12) // C�
       OCR1B = duty12;  // PWM chân 12
       OCR1A = duty11; // PWM chân 11
 }
-void TungLam_Control_MotorV5:: Init_Timer2(uint8_t duty9, uint8_t duty10) // Cài đặt Timer 2 tần số thấp cho chân 9 10 chuyên dùng cho Planet có PID hộp
+/**
+ * @brief Configure auxiliary Timer2 PWM channels D9/D10.
+ *
+ * Preserved for historical Planet/auxiliary motor mechanisms.
+ */
+void TungLam_Control_MotorV5:: Init_Timer2(uint8_t duty9, uint8_t duty10)
 {
     // Reset cấu hình Timer2
       Reset_Timer(2);
@@ -792,14 +1022,18 @@ void TungLam_Control_MotorV5:: Init_Timer2(uint8_t duty9, uint8_t duty10) // Cà
       TCCR2A |= (1 << COM2A1);
       OCR2A = duty10;
 }
+/**
+ * @brief Stop all four drive motors and clear legacy movement state.
+ */
 void TungLam_Control_MotorV5::STOP() {
-    cancelLegacyAbs(false);
-    setPWM(0);
-    setSTOP(0);
-    pre = 0;
-    isMoving = false;
-    startTime = 0;
+    cancelLegacyAbs(false);  // Disarm background ABS without redundant output write.
+    setPWM(0);      // Disable all four EN/PWM outputs before clearing direction.
+    setSTOP(0);     // Clear all direction inputs on PORTC.
+    pre = 0;        // No previous movement remains eligible for ABS.
+    isMoving = false;  // End legacy movement-duration tracking.
+    startTime = 0;     // Reset the movement-phase timestamp.
 }
+/** @brief Legacy common-duty forward command; records movement code 1. */
 void TungLam_Control_MotorV5::moveForward(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -810,6 +1044,7 @@ void TungLam_Control_MotorV5::moveForward(uint8_t duty) {
     pre = 1; // Tiến
 }
 
+/** @brief Legacy common-duty backward command; records movement code 2. */
 void TungLam_Control_MotorV5::moveBackward(uint8_t duty) {
     Tim();
     Dir(1,!Set);
@@ -820,6 +1055,7 @@ void TungLam_Control_MotorV5::moveBackward(uint8_t duty) {
     pre = 2; // Lùi
 }
 
+/** @brief Legacy forward-right diagonal command; active wheels M1 and M3. */
 void TungLam_Control_MotorV5::Forward_Right(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -827,6 +1063,7 @@ void TungLam_Control_MotorV5::Forward_Right(uint8_t duty) {
     PWM(duty, 0, duty, 0);
     pre = 3;
 }
+/** @brief Legacy backward-right diagonal command; active wheels M2 and M4. */
 void TungLam_Control_MotorV5::Backward_Right(uint8_t duty) {
     Tim();
     Dir(2, !Set);
@@ -834,6 +1071,7 @@ void TungLam_Control_MotorV5::Backward_Right(uint8_t duty) {
     PWM(0, duty, 0, duty);
     pre = 4;
 }
+/** @brief Legacy clockwise/right rotation command. */
 void TungLam_Control_MotorV5::moveRight(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -845,6 +1083,7 @@ void TungLam_Control_MotorV5::moveRight(uint8_t duty) {
     pre = 5; // Quay phải
 }
 
+/** @brief Legacy counter-clockwise/left rotation command. */
 void TungLam_Control_MotorV5::moveLeft(uint8_t duty) {
     Tim();
     Dir(1, !Set);
@@ -856,6 +1095,7 @@ void TungLam_Control_MotorV5::moveLeft(uint8_t duty) {
     pre = 6; // Quay trái
 }
 
+/** @brief Legacy left-strafe command. */
 void TungLam_Control_MotorV5::moveLeftSide(uint8_t duty) {
     Tim();
     Dir(1, !Set);
@@ -867,6 +1107,7 @@ void TungLam_Control_MotorV5::moveLeftSide(uint8_t duty) {
     pre = 7;
 }
 
+/** @brief Legacy right-strafe command. */
 void TungLam_Control_MotorV5::moveRightSide(uint8_t duty) {
     Tim();
     Dir(1, Set);
@@ -878,6 +1119,7 @@ void TungLam_Control_MotorV5::moveRightSide(uint8_t duty) {
     pre = 8; // Ngang trái
 }
 
+/** @brief Legacy forward-left diagonal command; active wheels M2 and M4. */
 void TungLam_Control_MotorV5::Forward_Left(uint8_t duty) {
     Tim();
     Dir(2, Set);
@@ -885,6 +1127,7 @@ void TungLam_Control_MotorV5::Forward_Left(uint8_t duty) {
     PWM(0, duty, 0, duty);
     pre = 9;
 }
+/** @brief Legacy backward-left diagonal command; active wheels M1 and M3. */
 void TungLam_Control_MotorV5::Backward_Left(uint8_t duty) {
     Tim();
     Dir(1, !Set);
@@ -892,22 +1135,28 @@ void TungLam_Control_MotorV5::Backward_Left(uint8_t duty) {
     PWM(duty, 0, duty, 0);
     pre = 10;
 }
+/**
+ * @brief Execute the historical V5 reverse-brake mapping without blocking.
+ *
+ * The user-supplied duty is applied directly as reverse torque. The old
+ * movement code (pre=1..10) selects the exact opposite movement pattern.
+ */
 void TungLam_Control_MotorV5::ABS(uint8_t duty) {
     if (gLegacyAbsActive) {
         return;
     }
 
-    const uint8_t previousMotion = pre;
+    const uint8_t previousMotion = pre;  // Snapshot before ABS resets public legacy state.
     if (previousMotion == 0) {
         STOP();
         return;
     }
 
-    Timer();
+    Timer();  // Select TIM from elapsed movement time and configured thresholds.
 
     // Remove drive power before switching H-bridge direction.
     setPWM(0);
-    delayMicroseconds(100);
+    delayMicroseconds(100);  // Short dead-time reduces shoot-through during forced reversal.
 
     // Apply exactly the same opposite-motion mapping as the legacy V5 ABS,
     // but do it directly so we do not restart Tim() or overwrite pre.
@@ -973,9 +1222,15 @@ void TungLam_Control_MotorV5::ABS(uint8_t duty) {
     isMoving = false;
     startTime = 0;
 
-    startLegacyAbsOneShot(TIM, pwmMode);
+    startLegacyAbsOneShot(TIM, pwmMode);  // Return immediately; ISR owns the STOP deadline.
 }
 
+/**
+ * @brief Start timing the current movement phase once.
+ *
+ * Repeated commands in the same movement phase do not continuously reset the
+ * timestamp; this preserves the legacy ABS duration-selection behavior.
+ */
 void TungLam_Control_MotorV5::Tim() {
     if (!isMoving) {
         startTime = millis();  // Ghi lại thời điểm bắt đầu di chuyển
@@ -983,6 +1238,7 @@ void TungLam_Control_MotorV5::Tim() {
     }
 }
 
+/** @brief Store the six user-configurable legacy ABS pulse durations. */
 void TungLam_Control_MotorV5::setTimABS(uint8_t t500, uint8_t t1000, uint8_t t1500, uint8_t t2000, uint8_t t3000, uint8_t tAbove3000) {
     tim500  = t500 ;
     tim1000 = t1000;
@@ -992,6 +1248,9 @@ void TungLam_Control_MotorV5::setTimABS(uint8_t t500, uint8_t t1000, uint8_t t15
     timAbove3000 = tAbove3000;
 }
 
+/**
+ * @brief Convert elapsed movement time to one configured ABS pulse duration.
+ */
 void TungLam_Control_MotorV5::Timer() {
     unsigned long duration = millis() - startTime;  // Tính thời gian đã di chuyển
     if (duration < 500) TIM = tim500;
@@ -1001,14 +1260,16 @@ void TungLam_Control_MotorV5::Timer() {
     else if (duration < 3000) TIM = tim3000;
     else TIM = timAbove3000;
     isMoving = false; // Tắt cờ
-    startTime = 0;    // Reset startTime để chuẩn bị cho lần di chuyển tiếp theo
+    startTime = 0;    // Clear timestamp for the next movement phase
 }
 
+/** @brief Write a raw legacy direction pattern to PORTC. */
 void TungLam_Control_MotorV5::setSTOP(uint8_t pattern) {
     // Cài đặt chiều động cơ từ pattern
     PORTC = pattern; // Giả sử PORTC được sử dụng để điều khiển các chân
 }
 
+/** @brief Write one common PWM duty to all four legacy drive outputs. */
 void TungLam_Control_MotorV5::setPWM(uint8_t duty) {
     // Cài đặt giá trị PWM cho các chân
     OCR3A = duty;  // Chân 5
@@ -1017,6 +1278,7 @@ void TungLam_Control_MotorV5::setPWM(uint8_t duty) {
     OCR4C = duty;  // Chân 8
 }
 
+/** @brief Write independent legacy PWM duties to M1..M4. */
 void TungLam_Control_MotorV5::PWM(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     // Cài đặt giá trị PWM cho các chân
     OCR3A = duty1;  // Chân 5
@@ -1025,6 +1287,7 @@ void TungLam_Control_MotorV5::PWM(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint
     OCR4C = duty4;  // Chân 8
 }
 
+/** @brief Per-wheel-duty forward command; movement code 1. */
 void TungLam_Control_MotorV5::Tien(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1, Set);
@@ -1035,6 +1298,7 @@ void TungLam_Control_MotorV5::Tien(uint8_t duty1,uint8_t duty2,uint8_t duty3,uin
     pre = 1;
 }
 
+/** @brief Per-wheel-duty backward command; movement code 2. */
 void TungLam_Control_MotorV5::Lui(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1,!Set);
@@ -1045,6 +1309,7 @@ void TungLam_Control_MotorV5::Lui(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint
     pre = 2;
 }
 
+/** @brief Per-wheel-duty forward-right diagonal; uses M1 and M3. */
 void TungLam_Control_MotorV5::T_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     (void)duty2;
@@ -1054,6 +1319,7 @@ void TungLam_Control_MotorV5::T_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     PWM(duty1, 0, duty3, 0);
     pre = 3;
 }
+/** @brief Per-wheel-duty backward-right diagonal; uses M2 and M4. */
 void TungLam_Control_MotorV5::L_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     (void)duty1;
@@ -1063,6 +1329,7 @@ void TungLam_Control_MotorV5::L_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     PWM(0, duty2, 0, duty4);
     pre = 4;
 }
+/** @brief Per-wheel-duty clockwise/right rotation; movement code 5. */
 void TungLam_Control_MotorV5::Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1, Set);
@@ -1074,6 +1341,7 @@ void TungLam_Control_MotorV5::Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uin
     pre = 5;
 }
 
+/** @brief Per-wheel-duty counter-clockwise/left rotation; movement code 6. */
 void TungLam_Control_MotorV5::Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1, !Set);
@@ -1085,6 +1353,7 @@ void TungLam_Control_MotorV5::Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uin
     pre = 6;
 }
 
+/** @brief Per-wheel-duty left strafe; movement code 7. */
 void TungLam_Control_MotorV5::N_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1, !Set);
@@ -1096,6 +1365,7 @@ void TungLam_Control_MotorV5::N_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     pre = 7;
 }
 
+/** @brief Per-wheel-duty right strafe; movement code 8. */
 void TungLam_Control_MotorV5::N_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     Dir(1, Set);
@@ -1107,6 +1377,7 @@ void TungLam_Control_MotorV5::N_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     pre = 8;
 }
 
+/** @brief Per-wheel-duty forward-left diagonal; uses M2 and M4. */
 void TungLam_Control_MotorV5::T_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     (void)duty1;
@@ -1116,6 +1387,7 @@ void TungLam_Control_MotorV5::T_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,u
     PWM(0, duty2, 0, duty4);
     pre = 9;
 }
+/** @brief Per-wheel-duty backward-left diagonal; uses M1 and M3. */
 void TungLam_Control_MotorV5::L_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
     Tim();
     (void)duty2;
