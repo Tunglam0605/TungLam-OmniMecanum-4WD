@@ -7,6 +7,21 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.7.2] - 2026-09-30
+
+### Documentation
+- Reworked all three `src/` files into documentation-grade source code without changing executable behavior.
+- Added comprehensive Doxygen documentation for the complete modern and legacy public APIs.
+- Documented Arduino Mega pin mapping, Timer/PORT ownership, PWM modes, motor inversion, Mecanum/Omni mixers, normalization, direction dead-time and all brake modes.
+- Documented the legacy V5 movement-state codes and per-wheel movement helpers.
+- Added detailed comments for Timer3 overflow one-shot ABS scheduling and ISR safety.
+- Cleaned legacy mojibake/corrupted comments and replaced them with readable technical comments.
+- Expanded private-state and helper documentation to make maintenance/debugging easier.
+
+### Validation
+- Source code before and after the documentation pass is identical after stripping comments and whitespace.
+- No public API, register expression, algorithm or runtime behavior was intentionally changed.
+
 ## [0.7.1] - 2026-09-30
 
 ### Changed
