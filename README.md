@@ -64,6 +64,79 @@ The implementation intentionally uses ATmega2560 registers directly for predicta
 - User-controlled active reverse-brake strength via `ABS(duty)`
 - Legacy V5 class kept for backward compatibility
 
+## Drop-in compatibility with the original V5 API
+
+Existing sketches do **not** need their motor-control function calls rewritten.
+
+The original include still works after installing this new library:
+
+```cpp
+#include <TungLam_Control_MotorV5.h>
+
+TungLam_Control_MotorV5 robot;
+
+void setup() {
+  robot.Mode1();
+  robot.setTimABS(45, 65, 70, 75, 80, 85);
+}
+
+void loop() {
+  robot.moveForward(160);
+  robot.ABS(200);
+}
+```
+
+You can also switch only the include to the new umbrella header and keep the same class and functions:
+
+```cpp
+#include <TungLam_OmniMecanum_4WD.h>
+
+TungLam_Control_MotorV5 robot;
+```
+
+The following legacy public API is preserved:
+
+```text
+Mode0 / Mode1
+Init_Timer1 / Init_Timer2
+STOP
+moveForward / moveBackward
+Forward_Right / Backward_Right
+Forward_Left / Backward_Left
+moveRight / moveLeft
+moveLeftSide / moveRightSide
+Dir
+Tien / Lui
+Trai / Phai
+T_Trai / T_Phai
+L_Trai / L_Phai
+N_Trai / N_Phai
+ABS(duty)
+setTimABS(...)
+```
+
+### Non-blocking ABS without changing old sketches
+
+The legacy class now uses the Timer3 PWM overflow interrupt as a short one-shot scheduler during `ABS()`.
+
+That means old code does **not** need to add:
+
+```cpp
+robot.update();
+```
+
+The call:
+
+```cpp
+robot.ABS(200);
+```
+
+starts the same strong reverse-brake pulse, returns immediately, and the interrupt automatically sets PWM to zero when the configured `setTimABS()` interval expires.
+
+A new drive command issued before ABS expires cancels the pending brake pulse and takes control immediately.
+
+> Migration note: if the old manually installed V5 library is still present as a separate Arduino library folder, remove that old copy once to avoid Arduino reporting multiple libraries for `TungLam_Control_MotorV5.h`. After that, existing sketch source can remain unchanged.
+
 ## Installation
 
 ### Arduino IDE — Download ZIP
@@ -348,7 +421,8 @@ TungLam-OmniMecanum-4WD/
 ## Version status
 
 - **0.5.x** — packaged legacy V5 baseline
-- **0.6.0** — V6 holonomic core development
+- **0.6.x** — V6 holonomic core and ABS compatibility refinement
+- **0.7.0** — drop-in V5 API compatibility with interrupt-driven non-blocking ABS
 - **1.0.0** — reserved for hardware-validated stable release
 
 ## License
