@@ -147,7 +147,7 @@
  *   M1      D5        PE3 / OC3A      D30 / PC7     D31 / PC6
  *   M2      D6        PH3 / OC4A      D32 / PC5     D33 / PC4
  *   M3      D7        PH4 / OC4B      D34 / PC3     D35 / PC2
- *   M4      D8        PH5 / OC4C      D36 / PC0     D37 / PC1
+ *   M4      D8        PH5 / OC4C      D37 / PC0     D36 / PC1
  *
  * @warning
  * The library directly owns Timer3, Timer4 and PORTC D30..D37 for the four
