@@ -1,0 +1,43 @@
+name: Legacy RoboBall Regression
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile-roboball-2024:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout motor library
+        uses: actions/checkout@v5
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install AVR core and Servo
+        run: |
+          set -euo pipefail
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install Servo
+
+      - name: Fetch RoboBall 2024 and PS2X dependency
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/Tunglam0605/TungLamvsRoboBall2024.git /tmp/TungLamvsRoboBall2024
+          git clone --depth 1 https://github.com/madsci1016/Arduino-PS2X.git /tmp/Arduino-PS2X
+
+      - name: Compile every RoboBall 2024 vehicle project unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sketch in /tmp/TungLamvsRoboBall2024/*; do
+            if [ -d "$sketch" ] && [ -f "$sketch/$(basename "$sketch").ino" ]; then
+              echo "=== Regression compiling $(basename "$sketch") ==="
+              arduino-cli compile \
+                --fqbn arduino:avr:mega \
+                --library . \
+                --library /tmp/Arduino-PS2X/PS2X_lib \
+                "$sketch"
+            fi
+          done

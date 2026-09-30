@@ -57,6 +57,41 @@ volatile int16_t gHalApplied[4] = {0, 0, 0, 0};
 volatile bool gTimedBrakeActive = false;
 volatile uint16_t gTimedBrakeOverflowsRemaining = 0;
 
+// Pure Mecanum basis helpers are constexpr so legacy parity is enforced at
+// compile time, not only documented in comments.
+constexpr int32_t mecanumV5M1(int32_t vx, int32_t vy, int32_t wz) {
+  return vx + vy + wz;
+}
+constexpr int32_t mecanumV5M2(int32_t vx, int32_t vy, int32_t wz) {
+  return vx - vy + wz;
+}
+constexpr int32_t mecanumV5M3(int32_t vx, int32_t vy, int32_t wz) {
+  return vx + vy - wz;
+}
+constexpr int32_t mecanumV5M4(int32_t vx, int32_t vy, int32_t wz) {
+  return vx - vy - wz;
+}
+
+static_assert(
+    mecanumV5M1(1, 0, 0) == 1 && mecanumV5M2(1, 0, 0) == 1 &&
+    mecanumV5M3(1, 0, 0) == 1 && mecanumV5M4(1, 0, 0) == 1,
+    "Mecanum forward basis must remain V5-compatible: ++++");
+
+static_assert(
+    mecanumV5M1(0, 1, 0) == 1 && mecanumV5M2(0, 1, 0) == -1 &&
+    mecanumV5M3(0, 1, 0) == 1 && mecanumV5M4(0, 1, 0) == -1,
+    "Mecanum right-strafe basis must remain V5-compatible: +-+-");
+
+static_assert(
+    mecanumV5M1(0, 0, 1) == 1 && mecanumV5M2(0, 0, 1) == 1 &&
+    mecanumV5M3(0, 0, 1) == -1 && mecanumV5M4(0, 0, 1) == -1,
+    "Mecanum clockwise basis must remain V5-compatible: ++--");
+
+static_assert(
+    mecanumV5M1(1, 1, 0) == 2 && mecanumV5M2(1, 1, 0) == 0 &&
+    mecanumV5M3(1, 1, 0) == 2 && mecanumV5M4(1, 1, 0) == 0,
+    "Mecanum forward-right diagonal must remain V5-compatible: +0+0");
+
 inline int8_t halSign(int16_t value) {
   if (value > 0) return 1;
   if (value < 0) return -1;
@@ -539,10 +574,10 @@ void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
   // This preserves the proven legacy robot movement convention while allowing
   // arbitrary vx/vy/wz mixing in the modern API.
   const Wheels out = normalize(
-      (int32_t)vx + vy + wz,
-      (int32_t)vx - vy + wz,
-      (int32_t)vx + vy - wz,
-      (int32_t)vx - vy - wz);
+      mecanumV5M1(vx, vy, wz),
+      mecanumV5M2(vx, vy, wz),
+      mecanumV5M3(vx, vy, wz),
+      mecanumV5M4(vx, vy, wz));
 
   setWheels(out.m1, out.m2, out.m3, out.m4);
 }
