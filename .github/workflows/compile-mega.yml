@@ -19,20 +19,13 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr
 
-      - name: Compile V6 Mecanum example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/MecanumDrive
-
-      - name: Compile V6 Omni-X example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/OmniXDrive
-
-      - name: Compile V6 per-wheel example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/PerWheelControl
-
-      - name: Compile V6 active-brake example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/ActiveBrakeNonBlocking
-
-      - name: Compile legacy basic example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/BasicMotion
-
-      - name: Compile legacy active-brake example
-        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/ActiveBrake
+      - name: Compile every example for Arduino Mega
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sketch in examples/*; do
+            if [ -d "$sketch" ]; then
+              echo "=== Compiling $sketch ==="
+              arduino-cli compile --fqbn arduino:avr:mega --library . "$sketch"
+            fi
+          done

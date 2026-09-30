@@ -115,3 +115,18 @@ Active reverse braking intentionally drives opposite torque for a short time. It
 Start with conservative values and monitor temperature.
 
 The V6 `ABS(duty)` path keeps the legacy behavior: the user selects the reverse-brake PWM directly. Use `setTimABS()` to tune the six legacy brake-time ranges. V6 only changes the timing implementation to non-blocking; it does not automatically weaken the requested brake duty.
+
+
+## Timer ownership and legacy asynchronous ABS
+
+The library owns Timer3 and Timer4 for the four motor PWM channels.
+
+For the drop-in `TungLam_Control_MotorV5` compatibility API, Timer3's overflow interrupt is enabled only while an `ABS(duty)` pulse is active. It is used as a one-shot timing source so the original API can become non-blocking without requiring any new call in legacy sketches.
+
+The interrupt is disabled automatically when:
+- the ABS interval expires,
+- `STOP()` is called,
+- a new direction/motion command takes control,
+- or `Mode0()/Mode1()` reinitializes the motor timers.
+
+As with the original direct-register library, other libraries that also take ownership of Timer3/Timer4 are not compatible with the four-motor PWM configuration.

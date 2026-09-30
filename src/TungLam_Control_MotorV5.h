@@ -69,7 +69,8 @@ class TungLam_Control_MotorV5 {
     uint8_t TIM = 0;                                                                       // Biến thời gian ABS
     uint8_t pre = 0;                                                                      // Biến trạng thái di chuyển trước đó
     uint8_t tim500=45, tim1000=65, tim1500=70, tim2000=75, tim3000=80, timAbove3000=85;  // Thời gian các giai đoạn
-    bool Set = false;                                                                   // Chiều thuận đúng
+    uint8_t pwmMode = 1;                                                               // 0: 976.56 Hz, 1: 7.81 kHz
+    bool Set = false;                                                                  // Chiều thuận đúng
 };
 
 #endif // _TungLam_Control_MotorV5_H_

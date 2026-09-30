@@ -20,6 +20,99 @@
 */
 
 #include "TungLam_Control_MotorV5.h"
+#include <avr/interrupt.h>
+
+namespace {
+volatile bool gLegacyAbsActive = false;
+volatile uint16_t gLegacyAbsOverflowsRemaining = 0;
+
+inline void legacyAbsStopHardwareFromISR() {
+    OCR3A = 0;
+    OCR4A = 0;
+    OCR4B = 0;
+    OCR4C = 0;
+    PORTC = 0x00;
+
+    TIMSK3 &= ~(1 << TOIE3);
+    gLegacyAbsOverflowsRemaining = 0;
+    gLegacyAbsActive = false;
+}
+
+void cancelLegacyAbs(bool stopOutputs) {
+    const uint8_t oldSreg = SREG;
+    cli();
+
+    const bool wasActive = gLegacyAbsActive;
+    TIMSK3 &= ~(1 << TOIE3);
+    gLegacyAbsOverflowsRemaining = 0;
+    gLegacyAbsActive = false;
+
+    SREG = oldSreg;
+
+    if (stopOutputs && wasActive) {
+        OCR3A = 0;
+        OCR4A = 0;
+        OCR4B = 0;
+        OCR4C = 0;
+        PORTC = 0x00;
+    }
+}
+
+uint16_t legacyAbsOverflowCount(uint8_t brakeMs, uint8_t pwmMode) {
+    if (brakeMs == 0) {
+        return 0;
+    }
+
+    // Timer3 is already the PWM timebase owned by this library.
+    // Mode1: 16 MHz / (8 * 256)  = 7812.5 overflows/s = 125/16 per ms.
+    // Mode0: 16 MHz / (64 * 256) = 976.5625 overflows/s = 125/128 per ms.
+    if (pwmMode == 1) {
+        return (uint16_t)(((uint32_t)brakeMs * 125UL + 15UL) / 16UL);
+    }
+
+    return (uint16_t)(((uint32_t)brakeMs * 125UL + 127UL) / 128UL);
+}
+
+void startLegacyAbsOneShot(uint8_t brakeMs, uint8_t pwmMode) {
+    const uint16_t overflows = legacyAbsOverflowCount(brakeMs, pwmMode);
+
+    if (overflows == 0) {
+        OCR3A = 0;
+        OCR4A = 0;
+        OCR4B = 0;
+        OCR4C = 0;
+        PORTC = 0x00;
+        return;
+    }
+
+    const uint8_t oldSreg = SREG;
+    cli();
+
+    gLegacyAbsOverflowsRemaining = overflows;
+    gLegacyAbsActive = true;
+
+    // Clear any stale Timer3 overflow flag, then arm only the overflow IRQ.
+    TIFR3 = (1 << TOV3);
+    TIMSK3 |= (1 << TOIE3);
+
+    SREG = oldSreg;
+}
+}
+
+ISR(TIMER3_OVF_vect) {
+    if (!gLegacyAbsActive) {
+        TIMSK3 &= ~(1 << TOIE3);
+        return;
+    }
+
+    if (gLegacyAbsOverflowsRemaining > 0) {
+        --gLegacyAbsOverflowsRemaining;
+    }
+
+    if (gLegacyAbsOverflowsRemaining == 0) {
+        legacyAbsStopHardwareFromISR();
+    }
+}
 
 TungLam_Control_MotorV5::TungLam_Control_MotorV5() {
   // Constructor để khởi tạo các giá trị mặc định nếu cần
@@ -35,6 +128,9 @@ void TungLam_Control_MotorV5:: Reset_45 (bool Off)
 }
 void TungLam_Control_MotorV5::Dir(uint8_t BanhNumber, bool Set)
 {
+  // Any new explicit motor command takes control immediately from a pending ABS pulse.
+  cancelLegacyAbs(true);
+
   switch (BanhNumber)
   {
   case 1: 
@@ -132,6 +228,8 @@ void TungLam_Control_MotorV5::Reset_Timer(uint8_t timerNumber)
 
 void TungLam_Control_MotorV5::Mode1() // Cài đặt tần số cao cho 4 chân 5,6,7,8 Mode riêng để điều khiển xe 4 bánh đa hướng với cài đặt các chân chiều và chân PWM
  {
+    cancelLegacyAbs(true);
+    pwmMode = 1;
     // Cài đặt các chân điều khiển chiều (Dir) từ PC0 đến PC7 là OUTPUT
     DDRC |= 0xFF;
 
@@ -159,6 +257,8 @@ void TungLam_Control_MotorV5::Mode1() // Cài đặt tần số cao cho 4 chân 
 }
 void TungLam_Control_MotorV5::Mode0() // Cài đặt tần số thấp cho 4 chân 5,6,7,8 Mode riêng để điều khiển xe 4 bánh đa hướng với cài đặt các chân chiều và chân PWM
   {
+    cancelLegacyAbs(true);
+    pwmMode = 0;
     // Cài đặt các chân điều khiển chiều (Dir) từ PC0 đến PC7 là OUTPUT
     DDRC |= 0xFF;
 
@@ -240,7 +340,8 @@ void TungLam_Control_MotorV5:: Init_Timer2(uint8_t duty9, uint8_t duty10) // Cà
       OCR2A = duty10; 
 }
 void TungLam_Control_MotorV5::STOP() {
-    setPWM(0);  // Disable EN/PWM before changing bridge direction state.
+    cancelLegacyAbs(false);
+    setPWM(0);
     setSTOP(0);
     pre = 0;
     isMoving = false;
@@ -339,8 +440,11 @@ void TungLam_Control_MotorV5::Backward_Left(uint8_t duty) {
     pre = 10;
 }
 void TungLam_Control_MotorV5::ABS(uint8_t duty) {
-    const uint8_t previousMotion = pre;
+    if (gLegacyAbsActive) {
+        return;
+    }
 
+    const uint8_t previousMotion = pre;
     if (previousMotion == 0) {
         STOP();
         return;
@@ -348,22 +452,75 @@ void TungLam_Control_MotorV5::ABS(uint8_t duty) {
 
     Timer();
 
+    // Remove drive power before switching H-bridge direction.
+    setPWM(0);
+    delayMicroseconds(100);
+
+    // Apply exactly the same opposite-motion mapping as the legacy V5 ABS,
+    // but do it directly so we do not restart Tim() or overwrite pre.
     switch (previousMotion) {
-      case 1:  moveBackward(duty);   break;
-      case 2:  moveForward(duty);    break;
-      case 3:  Backward_Left(duty);  break;
-      case 4:  Forward_Left(duty);   break;
-      case 5:  moveLeft(duty);       break;
-      case 6:  moveRight(duty);      break;
-      case 7:  moveRightSide(duty);  break;
-      case 8:  moveLeftSide(duty);   break;
-      case 9:  Backward_Right(duty); break;
-      case 10: Forward_Right(duty);  break;
-      default: break;
+      case 1:  // Forward -> Backward
+        Dir(1, !Set); Dir(2, !Set); Dir(3, !Set); Dir(4, !Set);
+        setPWM(duty);
+        break;
+
+      case 2:  // Backward -> Forward
+        Dir(1, Set); Dir(2, Set); Dir(3, Set); Dir(4, Set);
+        setPWM(duty);
+        break;
+
+      case 3:  // Forward_Right -> Backward_Left (M1, M3)
+        Dir(1, !Set); Dir(3, !Set);
+        PWM(duty, 0, duty, 0);
+        break;
+
+      case 4:  // Backward_Right -> Forward_Left (M2, M4)
+        Dir(2, Set); Dir(4, Set);
+        PWM(0, duty, 0, duty);
+        break;
+
+      case 5:  // Rotate right -> Rotate left
+        Dir(1, !Set); Dir(2, !Set); Dir(3, Set); Dir(4, Set);
+        setPWM(duty);
+        break;
+
+      case 6:  // Rotate left -> Rotate right
+        Dir(1, Set); Dir(2, Set); Dir(3, !Set); Dir(4, !Set);
+        setPWM(duty);
+        break;
+
+      case 7:  // Strafe left -> Strafe right
+        Dir(1, Set); Dir(2, !Set); Dir(3, Set); Dir(4, !Set);
+        setPWM(duty);
+        break;
+
+      case 8:  // Strafe right -> Strafe left
+        Dir(1, !Set); Dir(2, Set); Dir(3, !Set); Dir(4, Set);
+        setPWM(duty);
+        break;
+
+      case 9:  // Forward_Left -> Backward_Right (M2, M4)
+        Dir(2, !Set); Dir(4, !Set);
+        PWM(0, duty, 0, duty);
+        break;
+
+      case 10: // Backward_Left -> Forward_Right (M1, M3)
+        Dir(1, Set); Dir(3, Set);
+        PWM(duty, 0, duty, 0);
+        break;
+
+      default:
+        STOP();
+        return;
     }
 
-    delay(TIM);
-    STOP();
+    // The old public state is reset immediately; the hardware pulse continues
+    // in the background and is terminated by TIMER3_OVF_vect.
+    pre = 0;
+    isMoving = false;
+    startTime = 0;
+
+    startLegacyAbsOneShot(TIM, pwmMode);
 }
 
 void TungLam_Control_MotorV5::Tim() {
@@ -416,82 +573,102 @@ void TungLam_Control_MotorV5::PWM(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint
 }
 
 void TungLam_Control_MotorV5::Tien(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1, Set);
     Dir(2, Set);
     Dir(3, Set);
     Dir(4, Set); 
     PWM(duty1,duty2,duty3,duty4);
+    pre = 1;
 }
 
 void TungLam_Control_MotorV5::Lui(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1,!Set);
     Dir(2,!Set);
     Dir(3,!Set);
     Dir(4,!Set); 
     PWM(duty1,duty2,duty3,duty4);
+    pre = 2;
 }
 
 void TungLam_Control_MotorV5::T_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     (void)duty2;
     (void)duty4;
     Dir(1, Set);
     Dir(3, Set);
     PWM(duty1, 0, duty3, 0);
+    pre = 3;
 }
 void TungLam_Control_MotorV5::L_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     (void)duty1;
     (void)duty3;
     Dir(2, !Set);
     Dir(4, !Set);
     PWM(0, duty2, 0, duty4);
+    pre = 4;
 }
 void TungLam_Control_MotorV5::Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1, Set);
     Dir(2, Set);
     Dir(3, !Set);
     Dir(4, !Set);
   // Quay phải
     PWM(duty1,duty2,duty3,duty4);
+    pre = 5;
 }
 
 void TungLam_Control_MotorV5::Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1, !Set);
     Dir(2, !Set);
     Dir(3, Set);
     Dir(4, Set);
   // Quay trái
     PWM(duty1,duty2,duty3,duty4);
+    pre = 6;
 }
 
 void TungLam_Control_MotorV5::N_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1, !Set);
     Dir(2, Set);
     Dir(3, !Set);
     Dir(4, Set);
   // Ngang trái
     PWM(duty1,duty2,duty3,duty4);
+    pre = 7;
 }
 
 void TungLam_Control_MotorV5::N_Phai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     Dir(1, Set);
     Dir(2, !Set);
     Dir(3, Set);
     Dir(4, !Set);
   // Ngang phải
     PWM(duty1,duty2,duty3,duty4);
+    pre = 8;
 }
 
 void TungLam_Control_MotorV5::T_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     (void)duty1;
     (void)duty3;
     Dir(2, Set);
     Dir(4, Set);
     PWM(0, duty2, 0, duty4);
+    pre = 9;
 }
 void TungLam_Control_MotorV5::L_Trai(uint8_t duty1,uint8_t duty2,uint8_t duty3,uint8_t duty4) {
+    Tim();
     (void)duty2;
     (void)duty4;
     Dir(1, !Set);
     Dir(3, !Set);
     PWM(duty1, 0, duty3, 0);
+    pre = 10;
 }

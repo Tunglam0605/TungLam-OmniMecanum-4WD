@@ -7,6 +7,24 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.7.0] - 2026-09-30
+
+### Added
+- Drop-in source compatibility for sketches built against `TungLam_Control_MotorV5`.
+- Timer3 overflow one-shot scheduler for legacy `ABS(duty)`, so old sketches do not need to call `update()`.
+- Legacy compatibility examples using both the original header and the new umbrella header.
+- ABS state support for the legacy four-duty movement API (`Tien/Lui/Trai/Phai/T_Trai/T_Phai/L_Trai/L_Phai/N_Trai/N_Phai`).
+
+### Changed
+- Legacy `ABS(duty)` now returns immediately while preserving the user-selected brake PWM and `setTimABS(...)` timing table.
+- Any new legacy motor direction command safely cancels an active asynchronous ABS pulse before taking control.
+- Arduino Mega CI now compiles every example folder automatically.
+
+### Compatibility
+- All original public V5 method names and signatures remain available.
+- Existing sketches can continue including `TungLam_Control_MotorV5.h` unchanged.
+- The new `TungLam_OmniMecanum_4WD.h` umbrella header also exposes the complete V5 class.
+
 ## [0.6.1] - 2026-09-30
 
 ### Changed
