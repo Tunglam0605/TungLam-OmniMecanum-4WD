@@ -113,7 +113,10 @@
 
   Modern:
     motor.ABS(duty);
-    motor.update();  // gọi liên tục trong loop() khi dùng modern ABS.
+
+    - Modern ABS cũng dùng Timer3 overflow one-shot để tự ngắt đúng hạn.
+    - update() vẫn được giữ để đồng bộ state phần mềm, nhưng KHÔNG còn bắt buộc
+      để cắt lực hãm ở mức phần cứng.
 
   ==============================================================================
 */
@@ -138,7 +141,7 @@
  * 2. TungLamDrive4WD
  *    - Modern API for new projects.
  *    - Supports Mecanum-X, Omni-X and direct signed wheel commands.
- *    - Modern active braking is serviced by update().
+ *    - Modern active braking uses the same hardware-timed Timer3 cutoff as legacy.
  *
  * Hardware mapping used by both APIs:
  *
@@ -409,7 +412,7 @@ enum class TungLamPwmMode : uint8_t {
  * @brief Selects the built-in holonomic mixer used by drive().
  */
 enum class TungLamChassis : uint8_t {
-  MecanumX = 0,  ///< Canonical four-wheel Mecanum-X layout.
+  MecanumX = 0,  ///< TungLam/V5-compatible four-wheel Mecanum-X convention.
   OmniX = 1      ///< Canonical four-wheel Omni X-drive layout.
 };
 
@@ -445,11 +448,12 @@ class TungLamDrive4WD {
   void begin(TungLamPwmMode pwmMode = TungLamPwmMode::High7k8Hz);
 
   /**
-   * @brief Service the modern non-blocking active-brake state machine.
+   * @brief Synchronize modern software state after a hardware-timed brake pulse.
    *
-   * @note Call repeatedly from loop() when using TungLamDrive4WD::ABS() or
-   * activeBrake(). This requirement applies only to the modern class; the
-   * legacy TungLam_Control_MotorV5 ABS uses Timer3 ISR timing internally.
+   * Timer3 overflow ISR now terminates the physical ABS pulse independently of
+   * loop() latency. Calling update() is therefore optional for brake safety;
+   * it only clears stale high-level state after the ISR has already stopped
+   * the motors.
    */
   void update();
 
@@ -493,7 +497,17 @@ class TungLamDrive4WD {
    */
   void drive(int16_t vx, int16_t vy, int16_t wz);
 
-  /** @brief Apply the canonical Mecanum-X mixer directly. */
+  /**
+   * @brief Apply the TungLam/V5-compatible Mecanum-X mixer directly.
+   *
+   * Basis vectors:
+   * - forward      = [+,+,+,+]
+   * - strafe right = [+,-,+,-]
+   * - rotate right = [+,+,-,-]
+   *
+   * This keeps modern vx/vy/wz motion consistent with proven V5 robot commands.
+   */
+
   void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
 
   /** @brief Apply the canonical four-wheel Omni-X mixer directly. */
@@ -541,7 +555,8 @@ class TungLamDrive4WD {
    *
    * @details
    * The previous signed wheel directions are captured and each moving wheel is
-   * driven in the opposite direction. update() later terminates the pulse.
+   * driven in the opposite direction. Timer3 overflow ISR terminates the pulse
+   * at the configured deadline even if loop() is blocked.
    *
    * @warning This is intentionally a strong plug/reverse-braking mechanism.
    */

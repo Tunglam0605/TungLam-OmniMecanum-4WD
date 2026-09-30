@@ -47,7 +47,7 @@ The exact physical left/right assignment can be changed with `setMotorInverted()
 
 ## Mecanum-X convention
 
-V6 uses this canonical logical order:
+The modern API uses this logical wheel order:
 
 ```text
        FRONT
@@ -61,7 +61,7 @@ V6 uses this canonical logical order:
         REAR
 ```
 
-The mixer assumes a standard Mecanum-X roller arrangement.
+The Mecanum mixer is intentionally aligned with the original TungLam V5 movement basis: forward `++++`, strafe-right `+-+-`, rotate-right `++--`. This preserves legacy robot behavior while enabling arbitrary `vx/vy/wz` mixing. Validate physical roller orientation and motor polarity at low PWM on any newly built chassis.
 
 Cartesian convention:
 
@@ -117,11 +117,11 @@ Start with conservative values and monitor temperature.
 The V6 `ABS(duty)` path keeps the legacy behavior: the user selects the reverse-brake PWM directly. Use `setTimABS()` to tune the six legacy brake-time ranges. V6 only changes the timing implementation to non-blocking; it does not automatically weaken the requested brake duty.
 
 
-## Timer ownership and legacy asynchronous ABS
+## Timer ownership and hardware-timed ABS
 
 The library owns Timer3 and Timer4 for the four motor PWM channels.
 
-For the drop-in `TungLam_Control_MotorV5` compatibility API, Timer3's overflow interrupt is enabled only while an `ABS(duty)` pulse is active. It is used as a one-shot timing source so the original API can become non-blocking without requiring any new call in legacy sketches.
+For both the drop-in `TungLam_Control_MotorV5` API and modern `TungLamDrive4WD`, Timer3's overflow interrupt is enabled only while an `ABS(duty)` pulse is active. It is used as a one-shot timing source so the reverse pulse is cut off independently of sketch loop latency.
 
 The interrupt is disabled automatically when:
 - the ABS interval expires,
