@@ -1,9 +1,9 @@
-#include <TungLam_Mecanum_L298N.h>
+#include <TungLam_Control_MotorV5.h>
 
-TungLamMecanumL298N robot;
+TungLam_Control_MotorV5 robot;
 
 void setup() {
-  // 7.81 kHz PWM on pins 5, 6, 7, 8.
+  // Legacy V5 API is intentionally supported by the new library.
   robot.Mode1();
   robot.STOP();
 }
