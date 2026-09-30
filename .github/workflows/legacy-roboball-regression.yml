@@ -18,14 +18,24 @@ jobs:
         run: |
           set -euo pipefail
           arduino-cli core update-index
-          arduino-cli core install arduino:avr
-          arduino-cli lib install Servo
+          arduino-cli core install arduino:avr@1.8.8
+          arduino-cli lib install Servo@1.3.0
 
-      - name: Fetch RoboBall 2024 and PS2X dependency
+      - name: Fetch pinned RoboBall 2024 and PS2X regression dependencies
+        env:
+          ROBOBALL_SHA: 5c6f1bccbc052173e73d187a7d0389c9195f3abf
+          PS2X_SHA: b4a7f3c6691301c3bbf5f0c2f82662d23fec8aa2
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/Tunglam0605/TungLamvsRoboBall2024.git /tmp/TungLamvsRoboBall2024
-          git clone --depth 1 https://github.com/madsci1016/Arduino-PS2X.git /tmp/Arduino-PS2X
+
+          git clone --no-checkout https://github.com/Tunglam0605/TungLamvsRoboBall2024.git /tmp/TungLamvsRoboBall2024
+          git -C /tmp/TungLamvsRoboBall2024 checkout --detach "$ROBOBALL_SHA"
+
+          git clone --no-checkout https://github.com/madsci1016/Arduino-PS2X.git /tmp/Arduino-PS2X
+          git -C /tmp/Arduino-PS2X checkout --detach "$PS2X_SHA"
+
+          echo "RoboBall regression commit: $(git -C /tmp/TungLamvsRoboBall2024 rev-parse HEAD)"
+          echo "PS2X regression commit:     $(git -C /tmp/Arduino-PS2X rev-parse HEAD)"
 
       - name: Compile every RoboBall 2024 vehicle project unchanged
         shell: bash

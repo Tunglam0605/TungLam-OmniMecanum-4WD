@@ -130,3 +130,8 @@ The interrupt is disabled automatically when:
 - or `Mode0()/Mode1()` reinitializes the motor timers.
 
 As with the original direct-register library, other libraries that also take ownership of Timer3/Timer4 are not compatible with the four-motor PWM configuration.
+
+
+## Controller ownership
+
+D5..D8, D30..D37, Timer3 and Timer4 form one physical drive-motor peripheral. Use one motor-controller API on a board at a time: either the legacy `TungLam_Control_MotorV5` path or the modern `TungLamDrive4WD` path. Mixing both controller objects against the same hardware is unsupported.

@@ -7,6 +7,19 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.8.1] - 2026-09-30
+
+### Cleanup
+- Removed private legacy helpers made obsolete by the shared Motor HAL: `Reset_45`, `setSTOP`, `setPWM` and `PWM`.
+- Removed unused modern wrapper helpers around the common HAL while retaining the single PWM initialization path.
+- Kept the complete 29-method legacy V5 public API unchanged.
+- Pinned RoboBall 2024 and PS2X regression dependencies to immutable commit SHAs.
+- Clarified that one Arduino Mega should use one motor-controller API path at a time.
+- Cleaned README formatting and clarified that modern `update()` is optional state synchronization, not a brake-safety requirement.
+
+### Validation intent
+- No intended movement-vector, ABS timing, pin mapping, PWM mode or public API behavior change.
+
 ## [0.8.0] - 2026-09-30
 
 ### Changed
