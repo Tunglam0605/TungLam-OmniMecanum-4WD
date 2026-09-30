@@ -149,13 +149,13 @@ A new drive command issued before ABS expires cancels the pending brake pulse an
 
 ### Arduino Library Manager
 
-The project is being prepared for the Arduino Library Registry. After a tested stable release is tagged and accepted by the registry, users will be able to search for:
+The library is registered in the official Arduino Library Registry. Search for:
 
 ```text
 TungLam_OmniMecanum_4WD
 ```
 
-directly in Arduino IDE Library Manager.
+in Arduino IDE Library Manager. Once installed from Library Manager, future tagged releases can be updated directly from Arduino IDE.
 
 ## Wiring
 
@@ -243,9 +243,9 @@ robot.setWheels(+180, -120, +180, -120);
 
 This is the lowest public control layer and is independent of Mecanum/Omni mixing.
 
-## Active reverse braking
+## Active reverse braking — modern API
 
-V6 intentionally preserves the original V5 braking behavior:
+`TungLamDrive4WD` preserves the original V5 braking concept while using the modern `update()`-serviced state machine:
 
 ```cpp
 robot.ABS(duty);
@@ -276,7 +276,7 @@ The legacy configuration function is kept with the same name:
 robot.setTimABS(45, 65, 70, 75, 80, 85);
 ```
 
-The only architectural change is that V6 is **non-blocking**.
+The modern `TungLamDrive4WD` implementation is **non-blocking** and is serviced by `update()`. The legacy `TungLam_Control_MotorV5` compatibility class is also non-blocking, but it uses Timer3 overflow interrupt internally and therefore does **not** require `update()`.
 
 Legacy V5 concept:
 
@@ -395,22 +395,16 @@ V5 is preserved so existing sketches can migrate incrementally. New projects sho
 
 ## Repository layout
 
+The source tree is intentionally compact:
+
 ```text
 TungLam-OmniMecanum-4WD/
 ├─ src/
-│  ├─ TungLam_OmniMecanum_4WD.h
-│  ├─ TungLam_OmniMecanum_4WD.cpp
-│  ├─ TungLam_Control_MotorV5.h
-│  └─ TungLam_Control_MotorV5.cpp
+│  ├─ TungLam_OmniMecanum_4WD.h      # Main public header: modern + legacy API
+│  ├─ TungLam_OmniMecanum_4WD.cpp    # All implementation
+│  └─ TungLam_Control_MotorV5.h      # Tiny include shim for old sketches
 ├─ examples/
-│  ├─ MecanumDrive/
-│  ├─ OmniXDrive/
-│  ├─ PerWheelControl/
-│  ├─ ActiveBrakeNonBlocking/
-│  ├─ BasicMotion/
-│  └─ ActiveBrake/
 ├─ extras/
-│  └─ WIRING.md
 ├─ library.properties
 ├─ keywords.txt
 ├─ CHANGELOG.md
@@ -418,11 +412,14 @@ TungLam-OmniMecanum-4WD/
 └─ README.md
 ```
 
+Old sketches can continue including `TungLam_Control_MotorV5.h`; that compatibility header simply forwards to the main library header. There is no duplicated V5 implementation file anymore.
+
 ## Version status
 
 - **0.5.x** — packaged legacy V5 baseline
 - **0.6.x** — V6 holonomic core and ABS compatibility refinement
 - **0.7.0** — drop-in V5 API compatibility with interrupt-driven non-blocking ABS
+- **0.7.1** — compact 3-file source layout with unchanged V5/V6 public APIs
 - **1.0.0** — reserved for hardware-validated stable release
 
 ## License

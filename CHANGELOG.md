@@ -7,6 +7,21 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.7.1] - 2026-09-30
+
+### Changed
+- Reduced `src/` from five files to three without changing the V5 or modern public APIs.
+- Merged the complete legacy V5 implementation into `TungLam_OmniMecanum_4WD.cpp`.
+- Moved the `TungLam_Control_MotorV5` class declaration into the main public header.
+- Kept `TungLam_Control_MotorV5.h` as a tiny compatibility include for unchanged old sketches.
+- Removed the transitional `TungLam_Mecanum_L298N.h` packaging header from the unreleased 0.5.x naming phase.
+- Updated legacy examples to use the original V5 include directly.
+
+### Compatibility
+- Existing V5 projects using `#include <TungLam_Control_MotorV5.h>` and the original class/method names remain source-compatible.
+- Modern projects continue using `#include <TungLam_OmniMecanum_4WD.h>`.
+- No new runtime dependency or update call is required for legacy ABS.
+
 ## [0.7.0] - 2026-09-30
 
 ### Added
