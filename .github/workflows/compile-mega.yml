@@ -20,19 +20,19 @@ jobs:
           arduino-cli core install arduino:avr
 
       - name: Compile V6 Mecanum example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/MecanumDrive
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/MecanumDrive
 
       - name: Compile V6 Omni-X example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/OmniXDrive
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/OmniXDrive
 
       - name: Compile V6 per-wheel example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/PerWheelControl
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/PerWheelControl
 
       - name: Compile V6 active-brake example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/ActiveBrakeNonBlocking
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/ActiveBrakeNonBlocking
 
       - name: Compile legacy basic example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/BasicMotion
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/BasicMotion
 
       - name: Compile legacy active-brake example
-        run: arduino-cli compile --fqbn arduino:avr:mega examples/ActiveBrake
+        run: arduino-cli compile --fqbn arduino:avr:mega --library . examples/ActiveBrake
