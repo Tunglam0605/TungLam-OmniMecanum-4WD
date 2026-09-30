@@ -1,67 +1,208 @@
-# Wiring and chassis conventions
+# Wiring & commissioning guide
 
-## Electrical target
+This document is the detailed electrical companion to the main README.
 
-- Arduino Mega 2560
-- Two L298N dual H-bridge modules
-- Four brushed DC motors
-- Common ground between Arduino, both L298N boards and motor supply
+> **Target:** Arduino Mega 2560 + 2× L298N + 4 brushed DC motors.
 
-Do not power four motors from the Arduino 5 V rail.
+---
 
-## PWM / EN mapping
+## 1. Safety first
 
-| Motor | Arduino | AVR | L298N role |
+Before powering the robot:
+
+- lift the chassis so the wheels can rotate freely;
+- start with low PWM such as 60–80;
+- verify common ground;
+- verify motor-supply polarity;
+- remove ENA/ENB jumpers when EN is driven by Arduino PWM;
+- keep motor current out of the Arduino 5 V rail;
+- stop immediately if an L298N becomes excessively hot.
+
+The library controls logic only. Motor current, battery sizing, wiring gauge, mechanical load, and L298N thermal limits remain hardware responsibilities.
+
+---
+
+## 2. Logical wheel IDs
+
+Top view:
+
+```text
+                     FRONT / ĐẦU XE
+                           +vx
+                            ↑
+
+              M1                         M3
+         FRONT-LEFT                 FRONT-RIGHT
+            PWM D5                     PWM D7
+
+              M2                         M4
+          REAR-LEFT                  REAR-RIGHT
+            PWM D6                     PWM D8
+
+                            ↓
+                      REAR / ĐUÔI XE
+```
+
+Keep these IDs consistent in wiring, code, and troubleshooting.
+
+---
+
+## 3. Recommended L298N allocation
+
+### L298N #1
+
+| Channel | Motor | EN/PWM | DIR input 1 | DIR input 2 |
+|---|---|---:|---:|---:|
+| A | M1 | D5 | D30 | D31 |
+| B | M2 | D6 | D32 | D33 |
+
+### L298N #2
+
+| Channel | Motor | EN/PWM | DIR input 1 | DIR input 2 |
+|---|---|---:|---:|---:|
+| A | M3 | D7 | D34 | D35 |
+| B | M4 | D8 | D37 | D36 |
+
+For M4, the logical forward pin is **D37 / PC0** and reverse is **D36 / PC1**.
+
+---
+
+## 4. Complete Arduino pin map
+
+### PWM / EN
+
+| Motor | Mega pin | AVR output | Timer |
 |---|---:|---|---|
-| M1 | D5 | PE3 / OC3A | ENA/ENB for selected channel |
-| M2 | D6 | PH3 / OC4A | ENA/ENB for selected channel |
-| M3 | D7 | PH4 / OC4B | ENA/ENB for selected channel |
-| M4 | D8 | PH5 / OC4C | ENA/ENB for selected channel |
+| M1 | D5 | PE3 / OC3A | Timer3 |
+| M2 | D6 | PH3 / OC4A | Timer4 |
+| M3 | D7 | PH4 / OC4B | Timer4 |
+| M4 | D8 | PH5 / OC4C | Timer4 |
 
-Remove the fixed EN jumper on L298N modules when the EN pin is driven by PWM from the Arduino.
+### Direction
 
-## Direction mapping
-
-| Motor | Forward DIR | Reverse DIR |
+| Motor | Logical forward | Logical reverse |
 |---|---:|---:|
 | M1 | D30 / PC7 | D31 / PC6 |
 | M2 | D32 / PC5 | D33 / PC4 |
 | M3 | D34 / PC3 | D35 / PC2 |
 | M4 | D37 / PC0 | D36 / PC1 |
 
-The V6 driver owns PORTC (D30..D37) as the four motor direction pairs.
+The library owns PORTC D30..D37 for these four direction pairs.
 
-## Recommended L298N allocation
+---
 
-```text
-L298N #1
-  Channel A -> Motor 1
-  Channel B -> Motor 2
+## 5. Power and ground
 
-L298N #2
-  Channel A -> Motor 3
-  Channel B -> Motor 4
-```
-
-The exact physical left/right assignment can be changed with `setMotorInverted()`, but keep the software wheel numbering consistent.
-
-## Mecanum-X convention
-
-The modern API uses this logical wheel order:
+Recommended topology:
 
 ```text
-       FRONT
+Motor battery (+)
+      ├──────────────> L298N #1 motor supply
+      └──────────────> L298N #2 motor supply
 
-   M1 -------- M3
-   FL          FR
-
-   M2 -------- M4
-   RL          RR
-
-        REAR
+Motor battery (-)
+      ├──────────────> L298N #1 GND
+      ├──────────────> L298N #2 GND
+      └──────────────> Arduino Mega GND
 ```
 
-The Mecanum mixer is intentionally aligned with the original TungLam V5 movement basis: forward `++++`, strafe-right `+-+-`, rotate-right `++--`. This preserves legacy robot behavior while enabling arbitrary `vx/vy/wz` mixing. Validate physical roller orientation and motor polarity at low PWM on any newly built chassis.
+### Important notes
+
+- All control electronics need a common reference ground.
+- Do not power four drive motors from the Arduino 5 V pin.
+- L298N modules differ in how the onboard 5 V regulator and 5V-EN jumper are wired.
+- Do not blindly connect module 5 V to Arduino 5 V unless you understand the exact module revision and supply arrangement.
+- Use a motor supply appropriate for your motors.
+
+---
+
+## 6. ENA / ENB jumpers
+
+Many L298N modules ship with jumpers that force ENA and ENB high.
+
+If those jumpers remain installed, the motor channel can appear to run only at full speed and Arduino PWM will not control the enable line correctly.
+
+For this library:
+
+```text
+L298N #1 ENA <- D5
+L298N #1 ENB <- D6
+
+L298N #2 ENA <- D7
+L298N #2 ENB <- D8
+```
+
+Remove the fixed EN jumpers before connecting these PWM pins.
+
+---
+
+## 7. First commissioning procedure
+
+Use:
+
+```text
+File
+→ Examples
+→ TungLam_OmniMecanum_4WD
+→ FirstMotorTest
+```
+
+The test sequence is:
+
+```text
+M1 forward
+M1 reverse
+
+M2 forward
+M2 reverse
+
+M3 forward
+M3 reverse
+
+M4 forward
+M4 reverse
+```
+
+Expected physical positions:
+
+| Motor | Position |
+|---|---|
+| M1 | Front-left |
+| M2 | Rear-left |
+| M3 | Front-right |
+| M4 | Rear-right |
+
+If one motor is reversed:
+
+```cpp
+robot.setMotorInverted(1, true);
+```
+
+Change only the affected wheel number.
+
+---
+
+## 8. Mecanum convention
+
+The modern Mecanum mixer intentionally matches the original V5 movement basis.
+
+```text
+Forward       + + + +
+Backward      - - - -
+Right         + - + -
+Left          - + - +
+Rotate right  + + - -
+Rotate left   - - + +
+```
+
+Diagonals:
+
+```text
+Forward-right   + 0 + 0
+Forward-left    0 + 0 +
+Backward-right  0 - 0 -
+Backward-left   - 0 - 0
+```
 
 Cartesian convention:
 
@@ -71,17 +212,19 @@ Cartesian convention:
 +wz = clockwise
 ```
 
-If the robot moves in the wrong direction because motor polarity differs from the convention, correct each wheel with:
+If a newly built chassis does not strafe as expected after motor polarity is correct, inspect the **mechanical Mecanum wheel orientation** before changing software equations.
+
+---
+
+## 9. Omni X-drive convention
+
+For Omni X-drive:
 
 ```cpp
-robot.setMotorInverted(wheelNumber, true);
+robot.setChassis(TungLamChassis::OmniX);
 ```
 
-rather than editing the mixer equations.
-
-## Omni X-drive convention
-
-For Omni X-drive, the four wheel rolling axes must be arranged as an X-drive geometry. The V6 `driveOmniX()` mixer assumes the wheel order is consistent around the chassis and uses the same Cartesian convention:
+The software convention is still:
 
 ```text
 +vx = forward
@@ -89,49 +232,124 @@ For Omni X-drive, the four wheel rolling axes must be arranged as an X-drive geo
 +wz = clockwise
 ```
 
-Because Omni chassis mechanical layouts vary more than Mecanum kits, validate each axis at a low PWM first.
+Omni mechanical layouts vary. Commission each wheel individually, then test pure vx, pure vy, and pure wz before combined motion.
 
-Recommended commissioning sequence:
+---
 
-1. Lift the chassis so wheels are free.
-2. Run `setWheels(80, 0, 0, 0)` and verify M1 polarity.
-3. Repeat for M2, M3 and M4.
-4. Correct polarity with `setMotorInverted()`.
-5. Test pure `vx`.
-6. Test pure `vy`.
-7. Test pure `wz`.
-8. Only then test combined motion.
+## 10. Direction-change protection
 
-## Braking safety
+Both modern and legacy movement commands use the common motor HAL.
 
-Active reverse braking intentionally drives opposite torque for a short time. It can cause:
+When the electrical direction state changes:
 
-- high motor current
-- L298N heating
-- battery voltage sag
-- gearbox shock
-- wheel slip
+```text
+PWM = 0
+   ↓
+dead-time
+   ↓
+DIR update
+   ↓
+new PWM
+```
 
-Start with conservative values and monitor temperature.
+Default dead-time:
 
-The V6 `ABS(duty)` path keeps the legacy behavior: the user selects the reverse-brake PWM directly. Use `setTimABS()` to tune the six legacy brake-time ranges. V6 only changes the timing implementation to non-blocking; it does not automatically weaken the requested brake duty.
+```text
+100 µs
+```
 
+Modern API adjustment:
 
-## Timer ownership and hardware-timed ABS
+```cpp
+robot.setDirectionDeadTimeUs(150);
+```
 
-The library owns Timer3 and Timer4 for the four motor PWM channels.
+---
 
-For both the drop-in `TungLam_Control_MotorV5` API and modern `TungLamDrive4WD`, Timer3's overflow interrupt is enabled only while an `ABS(duty)` pulse is active. It is used as a one-shot timing source so the reverse pulse is cut off independently of sketch loop latency.
+## 11. ABS / active reverse braking
 
-The interrupt is disabled automatically when:
-- the ABS interval expires,
-- `STOP()` is called,
-- a new direction/motion command takes control,
-- or `Mode0()/Mode1()` reinitializes the motor timers.
+Active reverse braking intentionally applies torque opposite to the current wheel direction.
 
-As with the original direct-register library, other libraries that also take ownership of Timer3/Timer4 are not compatible with the four-motor PWM configuration.
+```cpp
+robot.ABS(180);
+```
 
+The requested value is the actual brake PWM.
 
-## Controller ownership
+Default timing table:
 
-D5..D8, D30..D37, Timer3 and Timer4 form one physical drive-motor peripheral. Use one motor-controller API on a board at a time: either the legacy `TungLam_Control_MotorV5` path or the modern `TungLamDrive4WD` path. Mixing both controller objects against the same hardware is unsupported.
+| Previous motion time | Brake pulse |
+|---:|---:|
+| < 500 ms | 45 ms |
+| < 1000 ms | 65 ms |
+| < 1500 ms | 70 ms |
+| < 2000 ms | 75 ms |
+| < 3000 ms | 80 ms |
+| >= 3000 ms | 85 ms |
+
+The Timer3 overflow interrupt acts as a one-shot cutoff, so the reverse pulse does not depend on normal loop timing.
+
+### ABS risks
+
+Strong active braking can cause:
+
+- high motor current;
+- L298N heating;
+- battery voltage sag;
+- mechanical shock;
+- wheel slip.
+
+Tune duty and timing conservatively.
+
+---
+
+## 12. Timer ownership
+
+The drive library owns:
+
+```text
+Timer3  -> M1 PWM + ABS overflow timing
+Timer4  -> M2 / M3 / M4 PWM
+PORTC   -> D30..D37 direction outputs
+```
+
+Other libraries that reconfigure Timer3 or Timer4 may conflict.
+
+The legacy V5 API also retains its historical auxiliary Timer1/Timer2 initialization functions. Use them only if your application understands those timer ownership implications.
+
+---
+
+## 13. Controller ownership
+
+One Arduino Mega should use one drive-controller API path for the same motor hardware:
+
+```text
+Legacy:
+TungLam_Control_MotorV5
+
+OR
+
+Modern:
+TungLamDrive4WD
+```
+
+Do not instantiate both to control the same D5..D8 / D30..D37 outputs simultaneously.
+
+---
+
+## 14. Troubleshooting checklist
+
+If the robot behaves incorrectly, check in this order:
+
+1. common ground;
+2. EN jumpers removed;
+3. correct motor ID M1..M4;
+4. correct PWM pins D5..D8;
+5. correct DIR pins D30..D37;
+6. one-wheel polarity using FirstMotorTest;
+7. Mecanum/Omni mechanical wheel orientation;
+8. battery voltage under load;
+9. L298N temperature;
+10. only then inspect software settings.
+
+This order avoids masking hardware mistakes with software sign changes.
