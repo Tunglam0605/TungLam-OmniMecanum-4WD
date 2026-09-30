@@ -22,12 +22,12 @@ Remove the fixed EN jumper on L298N modules when the EN pin is driven by PWM fro
 
 ## Direction mapping
 
-| Motor | DIR A | DIR B |
+| Motor | Forward DIR | Reverse DIR |
 |---|---:|---:|
-| M1 | D30 | D31 |
-| M2 | D32 | D33 |
-| M3 | D34 | D35 |
-| M4 | D36 | D37 |
+| M1 | D30 / PC7 | D31 / PC6 |
+| M2 | D32 / PC5 | D33 / PC4 |
+| M3 | D34 / PC3 | D35 / PC2 |
+| M4 | D37 / PC0 | D36 / PC1 |
 
 The V6 driver owns PORTC (D30..D37) as the four motor direction pairs.
 

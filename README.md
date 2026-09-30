@@ -170,12 +170,12 @@ in Arduino IDE Library Manager. Once installed from Library Manager, future tagg
 
 ### Direction pins
 
-| Motor | Arduino Mega direction pair |
-|---|---|
-| M1 | D30 / D31 |
-| M2 | D32 / D33 |
-| M3 | D34 / D35 |
-| M4 | D36 / D37 |
+| Motor | Forward DIR | Reverse DIR |
+|---|---:|---:|
+| M1 | D30 / PC7 | D31 / PC6 |
+| M2 | D32 / PC5 | D33 / PC4 |
+| M3 | D34 / PC3 | D35 / PC2 |
+| M4 | D37 / PC0 | D36 / PC1 |
 
 See [extras/WIRING.md](extras/WIRING.md) for L298N details and wheel-order conventions.
 
