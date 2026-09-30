@@ -15,9 +15,8 @@ void setup() {
   robot.begin();
   robot.setChassis(TungLamChassis::MecanumX);
 
-  // Conservative starting point. Tune on your real robot.
-  robot.setAutoBrakeDuty(60, 130, 55);
-  robot.setBrakeTimings(35, 45, 55, 60, 65, 70);
+  // Same configurable time table as the legacy V5 library.
+  robot.setTimABS(45, 65, 70, 75, 80, 85);
 
   robot.forward(150);
   stateStart = millis();
@@ -30,7 +29,9 @@ void loop() {
   const uint32_t now = millis();
 
   if (state == DemoState::Driving && now - stateStart >= 1500UL) {
-    robot.activeBrake();
+    // User directly chooses the reverse-brake strength, exactly like V5.
+    // This starts the brake pulse and returns immediately (non-blocking).
+    robot.ABS(150);
     state = DemoState::Braking;
   }
 

@@ -114,4 +114,4 @@ Active reverse braking intentionally drives opposite torque for a short time. It
 
 Start with conservative values and monitor temperature.
 
-The V6 automatic brake uses the previous wheel duty as an upper bound for each wheel and limits the global brake duty with configurable min/max settings.
+The V6 `ABS(duty)` path keeps the legacy behavior: the user selects the reverse-brake PWM directly. Use `setTimABS()` to tune the six legacy brake-time ranges. V6 only changes the timing implementation to non-blocking; it does not automatically weaken the requested brake duty.
