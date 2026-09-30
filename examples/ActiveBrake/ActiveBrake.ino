@@ -1,6 +1,6 @@
-#include <TungLam_Control_MotorV5.h>
+#include <TungLam_Mecanum_L298N.h>
 
-TungLam_Control_MotorV5 robot;
+TungLamMecanumL298N robot;
 
 void setup() {
   robot.Mode1();

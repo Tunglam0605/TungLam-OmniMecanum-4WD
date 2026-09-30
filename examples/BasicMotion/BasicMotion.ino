@@ -1,6 +1,6 @@
-#include <TungLam_Control_MotorV5.h>
+#include <TungLam_Mecanum_L298N.h>
 
-TungLam_Control_MotorV5 robot;
+TungLamMecanumL298N robot;
 
 void setup() {
   // 7.81 kHz PWM on pins 5, 6, 7, 8.

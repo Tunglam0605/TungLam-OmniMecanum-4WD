@@ -1,4 +1,4 @@
-# TungLam Mecanum L298N
+# TungLam_Mecanum_L298N
 
 Arduino Mega library for controlling a four-wheel mecanum robot with **two L298N drivers** using direct AVR timer/register access.
 
@@ -51,18 +51,18 @@ See [extras/WIRING.md](extras/WIRING.md) for details.
 2. Choose **Code → Download ZIP**.
 3. In Arduino IDE, choose **Sketch → Include Library → Add .ZIP Library…**.
 4. Select the downloaded ZIP.
-5. Open **File → Examples → TungLam Mecanum L298N**.
+5. Open **File → Examples → TungLam_Mecanum_L298N**.
 
 ### Arduino Library Manager
 
-The repository is prepared for Arduino Library Manager registration. After the first stable release is validated and submitted to the Arduino Library Registry, users will be able to search for **TungLam Mecanum L298N** directly in Library Manager.
+The repository is prepared for Arduino Library Manager registration. After the first stable release is validated and submitted to the Arduino Library Registry, users will be able to search for **TungLam_Mecanum_L298N** directly in Library Manager.
 
 ## Quick start
 
 ```cpp
-#include <TungLam_Control_MotorV5.h>
+#include <TungLam_Mecanum_L298N.h>
 
-TungLam_Control_MotorV5 robot;
+TungLamMecanumL298N robot;
 
 void setup() {
   robot.Mode1();   // ~7.81 kHz PWM
@@ -104,6 +104,7 @@ The current V5 implementation is preserved as the baseline. A future V6 is plann
 ```text
 TungLam-Mecanum-L298N/
 ├─ src/
+│  ├─ TungLam_Mecanum_L298N.h
 │  ├─ TungLam_Control_MotorV5.h
 │  └─ TungLam_Control_MotorV5.cpp
 ├─ examples/
