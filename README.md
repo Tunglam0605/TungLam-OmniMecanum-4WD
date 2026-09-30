@@ -122,7 +122,7 @@ The legacy class now uses the Timer3 PWM overflow interrupt as a short one-shot 
 That means old code does **not** need to add:
 
 ```cpp
-robot.update();
+robot.update()  // optional state synchronization;
 ```
 
 The call:
@@ -245,7 +245,7 @@ This is the lowest public control layer and is independent of Mecanum/Omni mixin
 
 ## Active reverse braking — modern API
 
-`TungLamDrive4WD` preserves the original V5 braking concept while using the modern `update()`-serviced state machine:
+`TungLamDrive4WD` preserves the original V5 braking concept while using the shared Timer3 hardware one-shot:
 
 ```cpp
 robot.ABS(duty);
@@ -276,7 +276,7 @@ The legacy configuration function is kept with the same name:
 robot.setTimABS(45, 65, 70, 75, 80, 85);
 ```
 
-The modern `TungLamDrive4WD` implementation is **non-blocking** and is serviced by `update()`. The legacy `TungLam_Control_MotorV5` compatibility class is also non-blocking, but it uses Timer3 overflow interrupt internally and therefore does **not** require `update()`.
+Both `TungLamDrive4WD` and `TungLam_Control_MotorV5` now use the same **Timer3 overflow one-shot** to terminate active reverse braking in hardware. The brake pulse therefore does not depend on `loop()` timing. `TungLamDrive4WD::update()` is retained for software-state synchronization and backward source compatibility, but is no longer required to physically stop the ABS pulse.
 
 Legacy V5 concept:
 
@@ -306,7 +306,7 @@ So `ABS(180)` still applies the requested reverse torque for the selected legacy
 
 ```cpp
 void loop() {
-  robot.update();  // services the non-blocking ABS timer
+  robot.update();  // optional: synchronizes software state after ISR cutoff
 
   // Other application work can continue here.
 }

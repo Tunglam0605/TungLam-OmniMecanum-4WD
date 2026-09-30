@@ -7,6 +7,27 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.8.0] - 2026-09-30
+
+### Changed
+- Unified legacy V5 movement commands and the modern API on one internal signed-wheel Motor HAL.
+- Every normal direction-state transition now follows `PWM=0 -> dead-time -> DIR -> PWM`, not only ABS.
+- Changed the modern Mecanum mixer to the proven V5 movement basis: forward `++++`, right `+-+-`, clockwise `++--`.
+- Modern and legacy active reverse braking now share the same Timer3 overflow one-shot cutoff.
+- Modern ABS no longer depends on `update()` or loop timing to remove reverse torque.
+- Kept `update()` as an optional software-state synchronization function for backward source compatibility.
+- Legacy per-wheel movement functions retain their original signatures and ABS state codes while using the common safe HAL.
+
+### Fixed
+- Eliminated live-PWM direction changes from normal legacy movement commands.
+- Removed the architecture split where legacy commands wrote registers directly while modern commands used the safe wheel-output path.
+- Ensured a new command can safely preempt an active timed brake through the shared scheduler/HAL.
+
+### Compatibility
+- Existing `TungLam_Control_MotorV5` sketches keep the same include, class name and public function calls.
+- `ABS(duty)` still uses the exact caller-selected reverse PWM and the six-stage `setTimABS(...)` timing table.
+- Modern source code using `update()` continues to compile; the call is simply no longer required for physical brake cutoff.
+
 ## [0.7.3] - 2026-09-30
 
 ### Documentation
