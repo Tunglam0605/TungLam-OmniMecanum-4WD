@@ -245,7 +245,7 @@ This is the lowest public control layer and is independent of Mecanum/Omni mixin
 
 ## Active reverse braking — modern API
 
-`TungLamDrive4WD` preserves the original V5 braking concept while using the modern `update()`-serviced state machine:
+`TungLamDrive4WD` preserves the original V5 braking concept while using the shared Timer3 hardware one-shot:
 
 ```cpp
 robot.ABS(duty);

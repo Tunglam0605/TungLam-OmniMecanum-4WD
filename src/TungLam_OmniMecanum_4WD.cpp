@@ -680,7 +680,7 @@ void TungLamDrive4WD::dynamicBrake() {
  *
  * Each moving wheel is commanded with the opposite sign at the exact
  * user-selected brakeDuty. The pulse duration comes from the six-stage table.
- * update() is responsible for ending this modern brake pulse.
+ * Timer3 overflow ISR is responsible for ending this modern brake pulse.
  */
 void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
   // If our previous pulse already expired in hardware, synchronize state first.
