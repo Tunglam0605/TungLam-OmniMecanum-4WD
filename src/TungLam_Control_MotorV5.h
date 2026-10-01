@@ -1,20 +1,18 @@
 /*==============================================================================
-  TUNGLAM_CONTROL_MOTORV5 - LEGACY COMPATIBILITY HEADER
+  TUNGLAM_CONTROL_MOTORV5 - HEADER TƯƠNG THÍCH LEGACY
   ==============================================================================
   Tác giả : Nguyễn Khắc Tùng Lâm
   Lớp     : DHTD16A2CL
-  MSSV     : 2210430016
+  MSSV    : 2210430016
   Tung Lâm Automation
 
   THƯ VIỆN ĐIỀU KHIỂN XE 4 BÁNH ĐA HƯỚNG - V5 COMPATIBILITY
 
-  SƠ ĐỒ ĐẤU NỐI V5 - ĐÃ ĐỐI CHIẾU VỚI CODE
-  ------------------------------------------------------------------------------
   PWM:
-    EN BÁNH 1 -> D5
-    EN BÁNH 2 -> D6
-    EN BÁNH 3 -> D7
-    EN BÁNH 4 -> D8
+    M1 -> D5
+    M2 -> D6
+    M3 -> D7
+    M4 -> D8
 
   DIR:
     M1: tiến D30 / PC7, lùi D31 / PC6
@@ -22,21 +20,15 @@
     M3: tiến D34 / PC3, lùi D35 / PC2
     M4: tiến D37 / PC0, lùi D36 / PC1
 
-  Header này chỉ forward sang TungLam_OmniMecanum_4WD.h; toàn bộ API V5 vẫn
-  được giữ nguyên để project cũ chỉ cần update library mà không sửa hàm.
-  ==============================================================================
-*/
+  File này chỉ forward sang TungLam_OmniMecanum_4WD.h. Toàn bộ class/API V5
+  được khai báo tại một nơi duy nhất để tránh hai phiên bản bị lệch nhau.
+==============================================================================*/
 
 /**
  * @file TungLam_Control_MotorV5.h
- * @brief Compatibility include for projects written against the original V5 library.
+ * @brief Header tương thích cho các project viết bằng thư viện V5 cũ.
  *
- * @details
- * This file is intentionally tiny. The full legacy class declaration now lives
- * in TungLam_OmniMecanum_4WD.h so the library has only one public declaration
- * source of truth.
- *
- * Existing sketches may remain unchanged:
+ * Project cũ có thể tiếp tục dùng nguyên:
  *
  * @code
  * #include <TungLam_Control_MotorV5.h>
@@ -48,19 +40,17 @@
  * }
  * @endcode
  *
- * All original V5 movement names, ABS(duty), setTimABS(...), Mode0()/Mode1(),
- * and the per-wheel-duty movement functions remain available through this
- * compatibility include.
+ * Các hàm chuyển động V5, ABS(duty), setTimABS(...), Mode0()/Mode1() và API
+ * PWM độc lập từng bánh vẫn được cung cấp thông qua header này.
  *
- * @note
- * Do not duplicate the class declaration here. Keeping this as a forwarding
- * header prevents the legacy and modern APIs from drifting apart over time.
+ * @note Không khai báo lại class tại đây. Header này chỉ include header chính
+ * để Legacy và Modern luôn dùng cùng một source of truth.
  */
 
 #ifndef TUNGLAM_CONTROL_MOTORV5_COMPAT_H
 #define TUNGLAM_CONTROL_MOTORV5_COMPAT_H
 
-// Import the single canonical public header containing both modern and V5 APIs.
+// Nạp header public duy nhất chứa cả Modern API và Legacy V5 API.
 #include "TungLam_OmniMecanum_4WD.h"
 
 #endif  // TUNGLAM_CONTROL_MOTORV5_COMPAT_H

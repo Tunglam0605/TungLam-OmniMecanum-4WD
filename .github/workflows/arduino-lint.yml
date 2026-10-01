@@ -11,6 +11,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Verify Vietnamese/English localization parity
+        run: python3 tools/check_localization.py
+
       - name: Arduino Lint
         uses: arduino/arduino-lint-action@v3
         with:

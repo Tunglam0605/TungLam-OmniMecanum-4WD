@@ -1,146 +1,146 @@
 /**
  * @file FirstMotorTest.ino
- * @brief Safe first-power-on commissioning test for M1, M2, M3, and M4.
+ * @brief Bài kiểm tra đầu tiên để xác nhận M1, M2, M3, M4 và chiều quay.
  *
- * IMPORTANT BEFORE UPLOAD:
- * - Lift the robot so all four wheels are off the floor.
- * - Check the README wiring table before applying motor power.
- * - Start with TEST_PWM around 60..80.
- * - Verify that the physical wheel positions are:
- *     M1 = front-left
- *     M2 = rear-left
- *     M3 = front-right
- *     M4 = rear-right
+ * QUAN TRỌNG TRƯỚC KHI CHẠY:
+ * - Kê robot lên để cả 4 bánh không chạm đất.
+ * - Kiểm tra lại bảng chân trong README.
+ * - Bắt đầu với TEST_PWM khoảng 60..80.
+ * - Xác nhận vị trí:
+ *     M1 = trước-trái
+ *     M2 = sau-trái
+ *     M3 = trước-phải
+ *     M4 = sau-phải
  *
- * The sketch tests each wheel forward and reverse one at a time. It is intended
- * to find wiring, polarity, and wheel-numbering mistakes before chassis motion.
+ * Sketch sẽ test từng bánh riêng lẻ theo chiều tiến rồi chiều lùi.
+ * Đây là bước commissioning nên làm trước khi test chuyển động Mecanum/Omni.
  */
 
-// Import the modern API because direct signed per-wheel commands are ideal for commissioning.
+// Nạp modern API vì setWheels() rất phù hợp để test từng bánh.
 #include <TungLam_OmniMecanum_4WD.h>
 
-// Create one controller for the single four-motor hardware resource.
+// Tạo một controller duy nhất cho 4 motor.
 TungLamDrive4WD robot;
 
-// Use a low PWM so the first electrical/mechanical test is gentle.
+// PWM test thấp để lần kiểm tra đầu tiên an toàn hơn.
 constexpr uint8_t TEST_PWM = 80;
 
-// Run each forward/reverse wheel test for 900 ms.
+// Mỗi chiều quay chạy trong 900 ms.
 constexpr uint16_t RUN_MS = 900;
 
-// Pause 500 ms after each direction so the result is easy to observe.
+// Nghỉ 500 ms giữa các lần đổi chiều/bánh.
 constexpr uint16_t PAUSE_MS = 500;
 
 /**
- * @brief Drive only one selected wheel while commanding the other three to zero.
- * @param wheel Logical motor number 1..4.
- * @param duty Signed PWM: positive=logical forward, negative=logical reverse.
+ * @brief Chỉ chạy một bánh, ba bánh còn lại bằng 0.
+ * @param wheel Số bánh logic từ 1 đến 4.
+ * @param duty PWM có dấu: dương=tiến logic, âm=lùi logic.
  */
 void driveOnly(uint8_t wheel, int16_t duty) {
-  // Select which element of the four-wheel vector receives the test duty.
+  // Chọn phần tử tương ứng trong vector M1..M4.
   switch (wheel) {
     case 1:
-      // M1 only; M2/M3/M4 remain stopped.
+      // Chỉ M1 chạy.
       robot.setWheels(duty, 0, 0, 0);
       break;
 
     case 2:
-      // M2 only; M1/M3/M4 remain stopped.
+      // Chỉ M2 chạy.
       robot.setWheels(0, duty, 0, 0);
       break;
 
     case 3:
-      // M3 only; M1/M2/M4 remain stopped.
+      // Chỉ M3 chạy.
       robot.setWheels(0, 0, duty, 0);
       break;
 
     case 4:
-      // M4 only; M1/M2/M3 remain stopped.
+      // Chỉ M4 chạy.
       robot.setWheels(0, 0, 0, duty);
       break;
 
     default:
-      // Invalid motor number: fail safely by stopping the drive system.
+      // Nếu số bánh sai thì dừng an toàn.
       robot.stop();
       break;
   }
 }
 
 /**
- * @brief Test one wheel in logical forward and reverse directions.
- * @param wheel Logical wheel number 1..4.
+ * @brief Test một bánh theo cả chiều tiến và chiều lùi.
+ * @param wheel Số bánh logic từ 1 đến 4.
  */
 void testWheel(uint8_t wheel) {
-  // Print the motor number before the forward test.
+  // In tên bánh trước khi test chiều tiến.
   Serial.print(F("M"));
   Serial.print(wheel);
   Serial.println(F(" forward"));
 
-  // Apply positive TEST_PWM only to this wheel.
+  // Duty dương = chiều tiến logic.
   driveOnly(wheel, TEST_PWM);
 
-  // Keep the wheel running long enough for visual inspection.
+  // Giữ bánh chạy đủ lâu để quan sát.
   delay(RUN_MS);
 
-  // Remove motor drive after the forward test.
+  // Dừng sau bài test tiến.
   robot.stop();
 
-  // Pause before reversing the same wheel.
+  // Chờ trước khi đảo chiều.
   delay(PAUSE_MS);
 
-  // Print the motor number before the reverse test.
+  // In tên bánh trước khi test chiều lùi.
   Serial.print(F("M"));
   Serial.print(wheel);
   Serial.println(F(" reverse"));
 
-  // Apply the same PWM magnitude with a negative sign for logical reverse.
+  // Duty âm = chiều lùi logic.
   driveOnly(wheel, -(int16_t)TEST_PWM);
 
-  // Keep reverse motion active for the same observation time.
+  // Quan sát chiều lùi trong cùng khoảng thời gian.
   delay(RUN_MS);
 
-  // Stop the wheel after the reverse test.
+  // Dừng bánh.
   robot.stop();
 
-  // Pause before moving to the next motor.
+  // Chờ trước khi sang bánh tiếp theo.
   delay(PAUSE_MS);
 }
 
 void setup() {
-  // Open Serial Monitor output at 115200 baud for test progress messages.
+  // Mở Serial Monitor để theo dõi tiến trình test.
   Serial.begin(115200);
 
-  // Configure Timer3/Timer4 for the recommended ~7.8125 kHz drive PWM.
+  // Khởi tạo PWM tần số cao khoảng 7,8125 kHz.
   robot.begin(TungLamPwmMode::High7k8Hz);
 
-  // Explicitly enforce a stopped state before the countdown begins.
+  // Đảm bảo robot đang dừng trước countdown.
   robot.stop();
 
-  // Identify the sketch in Serial Monitor.
+  // In tên bài test.
   Serial.println(F("TungLam 4WD - First Motor Test"));
 
-  // Remind the operator that the robot should be lifted.
+  // Nhắc người dùng kê robot lên.
   Serial.println(F("Lift the robot so all wheels are free."));
 
-  // Announce the startup delay before any wheel moves.
+  // Báo trước khi bắt đầu chạy motor.
   Serial.println(F("Starting in 3 seconds..."));
 
-  // Give the operator three seconds to react before motor movement begins.
+  // Cho người dùng 3 giây để phản ứng trước khi motor quay.
   delay(3000);
 
-  // Test M1, then M2, then M3, then M4.
+  // Test lần lượt M1 → M2 → M3 → M4.
   for (uint8_t wheel = 1; wheel <= 4; ++wheel) {
-    // Run both forward and reverse checks for the selected wheel.
+    // Mỗi bánh được test cả tiến và lùi.
     testWheel(wheel);
   }
 
-  // Leave all motors stopped after the one-shot commissioning sequence.
+  // Kết thúc bằng trạng thái dừng.
   robot.stop();
 
-  // Tell the operator the test completed successfully from the sketch's perspective.
+  // Báo hoàn tất trên Serial Monitor.
   Serial.println(F("Motor test complete."));
 }
 
 void loop() {
-  // Intentionally empty: this commissioning test runs once from setup().
+  // Để trống: bài test chỉ chạy một lần trong setup().
 }

@@ -1,258 +1,243 @@
-# Kinematics, SI velocity, and open-loop motor model
+[🇻🇳 Tiếng Việt](KINEMATICS.md) • [🌐 English](KINEMATICS.en.md)
 
-This document explains the physical model behind the modern API.
+# Động học, vận tốc SI và mô hình vòng hở
 
-It is written for two audiences:
+Tài liệu này giải thích phần toán và mô hình vật lý của modern API trong `TungLam_OmniMecanum_4WD`.
 
-- beginners who only want to enter motor/chassis dimensions and call `driveVelocity()`;
-- students who want to understand the equations that convert robot body velocity into individual wheel velocity.
+Mục tiêu là để:
+
+- học sinh có thể khai báo thông số robot rồi dùng ngay;
+- sinh viên có thể đọc phương trình động học và hiểu vì sao thư viện tính như vậy;
+- về sau dễ nối encoder, PID, IMU và ROS2.
 
 ---
 
-## 1. Standard robot coordinate frame
+# 1. Hệ tọa độ chuẩn
 
-The modern API uses a right-handed body frame compatible with common mobile-robot and ROS conventions:
+Thư viện dùng body frame tay phải:
 
 ```text
                  +X / +vx
-                  forward
-                     ^
-                     |
-                     |
-          +Y  <--- ROBOT
-          left
-                     ⊙ +Z
+                  tiến
+                   ↑
+                   |
+                   |
+        +Y / +vy ← ROBOT
+             trái
 
-Viewed from above:
-
-+wz = counter-clockwise / turn left
--wz = clockwise / turn right
++Z hướng lên khỏi mặt robot
 ```
 
-Therefore:
+Nhìn từ trên xuống:
 
 ```text
-+vx = forward
--vx = backward
-
-+vy = left
--vy = right
-
-+wz = counter-clockwise (CCW)
--wz = clockwise (CW)
++wz = quay trái / CCW
+-wz = quay phải / CW
 ```
 
-This convention applies only to the modern Cartesian APIs.
+Tóm tắt:
 
-The legacy `TungLam_Control_MotorV5` movement functions keep their historical behavior.
+```text
++vx = tiến
+-vx = lùi
+
++vy = trái
+-vy = phải
+
++wz = ngược chiều kim đồng hồ
+-wz = cùng chiều kim đồng hồ
+```
+
+Legacy `TungLam_Control_MotorV5` vẫn giữ hành vi lịch sử.
 
 ---
 
-## 2. Wheel numbering
+# 2. Thứ tự bánh và kích thước đế
 
 ```text
-                     FRONT
+                     ĐẦU XE
 
               M1             M3
-          front-left     front-right
+          trước-trái     trước-phải
 
               M2             M4
-           rear-left      rear-right
+           sau-trái       sau-phải
 
-                      REAR
+                      ĐUÔI XE
 ```
 
-Physical dimensions:
+Các kích thước:
 
 ```text
+wheelRadiusM
+= bán kính lăn hiệu dụng của bánh [m]
+
 wheelbaseM
-= distance from the front wheel-centre line
-  to the rear wheel-centre line
+= khoảng cách từ đường tâm bánh trước
+  đến đường tâm bánh sau [m]
 
 trackWidthM
-= distance from the left wheel-centre line
-  to the right wheel-centre line
-
-wheelRadiusM
-= effective rolling radius of one wheel
+= khoảng cách từ đường tâm bánh trái
+  đến đường tâm bánh phải [m]
 ```
 
-For the equations we use:
+Đặt:
 
 ```text
-L = wheelbaseM / 2
-W = trackWidthM / 2
+L = wheelbase / 2
+W = trackWidth / 2
+
 K = L + W
-  = (wheelbaseM + trackWidthM) / 2
+  = (wheelbase + trackWidth) / 2
 ```
 
 ---
 
-# 3. Beginner setup
+# 3. Khai báo nhanh
 
-Example:
+Ví dụ:
 
 ```cpp
-TungLamDriveConfig driveModel(
-    12.0f,   // motor rated voltage [V]
-    300.0f,  // gearbox/output no-load RPM at rated voltage
-    12.0f,   // motor-driver supply voltage [V]
-    0.050f,  // wheel radius [m]
-    0.320f,  // wheelbase: front-centre to rear-centre [m]
-    0.280f,  // track width: left-centre to right-centre [m]
-    0.85f    // empirical open-loop speed correction
+TungLamDriveConfig model(
+    12.0f,   // điện áp danh định motor [V]
+    300.0f,  // RPM đầu ra hộp số tại điện áp danh định
+    12.0f,   // điện áp nguồn cấp driver [V]
+    0.050f,  // bán kính bánh [m]
+    0.320f,  // wheelbase [m]
+    0.280f,  // track width [m]
+    0.85f    // hệ số hiệu chỉnh vòng hở
 );
 
 robot.begin();
 robot.setChassis(TungLamChassis::MecanumX);
-robot.setDriveConfig(driveModel);
+robot.setDriveConfig(model);
 ```
 
-Then command physical velocity:
+Sau đó điều khiển bằng đơn vị vật lý:
 
 ```cpp
 robot.driveVelocity(
-    0.40f,  // vx = 0.40 m/s forward
-    0.10f,  // vy = 0.10 m/s left
+    0.40f,  // vx = 0.40 m/s tiến
+    0.10f,  // vy = 0.10 m/s sang trái
     0.50f   // wz = 0.50 rad/s CCW
 );
 ```
 
 ---
 
-# 4. Meaning of the motor parameters
+# 4. Ý nghĩa từng thông số
 
-## `motorNominalVoltageV`
+## motorNominalVoltageV
 
-Rated voltage associated with the RPM specification.
+Điện áp danh định gắn với thông số RPM của motor.
 
-Examples:
+Ví dụ:
 
 ```text
-12 V motor -> 12.0f
-24 V motor -> 24.0f
+motor 12V → 12.0f
+motor 24V → 24.0f
 ```
 
-## `motorNoLoadRpm`
+## motorNoLoadRpm
 
-No-load rotational speed at the final output shaft that directly drives the wheel.
+Tốc độ không tải tại **đầu ra cuối cùng kéo bánh**.
 
-For a geared DC motor, use the **gearbox output RPM**, not the internal motor rotor RPM.
+Nếu dùng motor giảm tốc, hãy nhập RPM đầu ra hộp số, không nhập RPM rotor bên trong motor.
 
-Example:
+Ví dụ motor ghi:
 
 ```text
-Motor label:
-12 V
+12V
 300 RPM
+```
 
+thì:
+
+```text
 motorNominalVoltageV = 12.0
 motorNoLoadRpm       = 300.0
 ```
 
-If an additional external gearbox or belt reduction exists between the specified shaft and the wheel, convert the RPM to the final wheel-shaft RPM first.
+Nếu còn dây đai/hộp số phụ giữa motor và bánh thì phải quy đổi về RPM trục bánh trước.
 
-## `supplyVoltageV`
+## supplyVoltageV
 
-Voltage supplied to the motor H-bridge.
+Điện áp cấp vào H-bridge/motor driver.
 
-Example:
+Thông số này dùng để ước lượng tốc độ theo điện áp.
 
-```text
-12 V battery / driver supply:
-supplyVoltageV = 12.0
-```
+Không được hiểu là có thể cấp quá áp định mức tùy ý.
 
-This value is used for theoretical speed scaling. It is not permission to over-voltage a motor beyond its safe rating.
+## speedScale
 
-## `speedScale`
+Hệ số thực nghiệm để bù sai số do:
 
-Empirical correction for the difference between datasheet no-load speed and the real robot.
+- sụt áp L298N;
+- pin sụt áp khi tải;
+- tải robot;
+- ma sát;
+- hộp số;
+- sai số motor;
+- biến dạng bánh.
 
-Typical losses include:
-
-- L298N voltage drop;
-- battery sag;
-- motor load;
-- gearbox loss;
-- wheel deformation;
-- carpet/floor friction;
-- manufacturing variation.
-
-Start with:
+Ban đầu có thể dùng:
 
 ```cpp
-speedScale = 1.0f;
+1.0f
 ```
 
-Then measure the real robot and reduce or adjust the value.
-
-Example:
+Sau khi đo robot thật, ví dụ thấy tốc độ chỉ khoảng 85% lý thuyết:
 
 ```cpp
-speedScale = 0.85f;
+0.85f
 ```
-
-means the open-loop model assumes the real available speed is about 85% of the ideal estimate.
 
 ---
 
-# 5. Motor RPM estimate
+# 5. Ước lượng RPM theo điện áp
 
-For a brushed DC motor, no-load speed is approximately proportional to applied voltage.
+Với DC motor, tốc độ không tải thường xấp xỉ tỷ lệ với điện áp.
 
-The library estimates:
+Thư viện ước lượng:
 
 ```text
 RPM_est =
     motorNoLoadRpm
-    x supplyVoltageV / motorNominalVoltageV
-    x speedScale
+    × supplyVoltageV / motorNominalVoltageV
+    × speedScale
 ```
 
-This is a feed-forward approximation only.
+Đây là **mô hình feed-forward**, không phải cảm biến đo RPM thật.
 
 ---
 
-# 6. RPM to angular wheel speed
+# 6. RPM → rad/s
 
 ```text
-omega_wheel [rad/s]
-    = RPM x 2*pi / 60
-```
-
-The library uses:
-
-```text
-2*pi = 6.283185...
+omega [rad/s]
+    = RPM × 2π / 60
 ```
 
 ---
 
-# 7. Angular wheel speed to linear wheel-perimeter speed
+# 7. rad/s → m/s tại vành bánh
 
-For wheel radius `r`:
-
-```text
-v_wheel = r x omega_wheel
-```
-
-Unit:
+Với bán kính bánh `r`:
 
 ```text
-m/s
+v_wheel = r × omega
 ```
 
-Therefore the estimated maximum wheel-perimeter speed is:
+Suy ra:
 
 ```text
-v_wheel_max
-    = wheelRadiusM
-    x RPM_est
-    x 2*pi / 60
+v_wheel_max =
+    wheelRadiusM
+    × RPM_est
+    × 2π / 60
 ```
 
-The public helper is:
+Có thể đọc bằng:
 
 ```cpp
 robot.maxWheelLinearSpeedMps();
@@ -260,23 +245,23 @@ robot.maxWheelLinearSpeedMps();
 
 ---
 
-# 8. Mecanum-X inverse kinematics
+# 8. Động học nghịch Mecanum-X
 
-Body command:
+Đầu vào:
 
 ```text
-vx = forward velocity [m/s]
-vy = left velocity [m/s]
-wz = CCW yaw rate [rad/s]
+vx = vận tốc tiến [m/s]
+vy = vận tốc trái [m/s]
+wz = tốc độ quay CCW [rad/s]
 ```
 
-With:
+Với:
 
 ```text
 K = (wheelbase + trackWidth) / 2
 ```
 
-the wheel-perimeter linear velocities are:
+thì:
 
 ```text
 v1 = vx - vy - K*wz
@@ -285,63 +270,63 @@ v3 = vx - vy + K*wz
 v4 = vx + vy + K*wz
 ```
 
-Wheel order:
+Trong đó:
 
 ```text
-v1 -> M1 front-left
-v2 -> M2 rear-left
-v3 -> M3 front-right
-v4 -> M4 rear-right
+v1 → M1 trước-trái
+v2 → M2 sau-trái
+v3 → M3 trước-phải
+v4 → M4 sau-phải
 ```
 
-The library exposes this calculation without driving motors:
+API:
 
 ```cpp
 TungLamWheelVelocity wheels =
-    robot.inverseKinematics(vxMps, vyMps, wzRadps);
+    robot.inverseKinematics(vx, vy, wz);
 ```
 
 ---
 
-## 8.1 Check the basis vectors
+# 9. Kiểm tra các vector cơ bản
 
-Pure forward:
+## Chỉ tiến
 
 ```text
 vx > 0
 vy = 0
 wz = 0
 
-=> + + + +
+→ + + + +
 ```
 
-Pure left:
+## Chỉ sang trái
 
 ```text
 vx = 0
 vy > 0
 wz = 0
 
-=> - + - +
+→ - + - +
 ```
 
-Pure CCW rotation:
+## Chỉ quay trái / CCW
 
 ```text
 vx = 0
 vy = 0
 wz > 0
 
-=> - - + +
+→ - - + +
 ```
 
-These are the same physical movement vectors already proven by the original V5 library, but the modern Cartesian signs now follow the standard body frame.
+Đây vẫn là các vector vật lý đã được chứng minh từ V5, chỉ chuẩn hóa dấu Cartesian của modern API.
 
 ---
 
-# 9. Mecanum-X forward kinematics
+# 10. Động học thuận Mecanum-X
 
-If wheel-perimeter velocities are known, for example from wheel encoders:
+Nếu biết vận tốc 4 bánh, ví dụ lấy từ encoder:
 
 ```text
 vx =
@@ -354,54 +339,62 @@ wz =
     (-v1 - v2 + v3 + v4) / (4*K)
 ```
 
-Public helper:
+API:
 
 ```cpp
 TungLamBodyVelocity body =
     robot.forwardKinematics(wheels);
 ```
 
-This function does not read encoders itself.
+Kết quả:
 
-It provides the mathematical layer that a future encoder driver can feed.
+```cpp
+body.vxMps;
+body.vyMps;
+body.wzRadps;
+```
+
+Hàm này chỉ tính toán toán học, không tự đọc encoder.
 
 ---
 
-# 10. Omni X-drive model
+# 11. Omni X-drive
 
-The built-in Omni-X model assumes four 45-degree wheel rolling axes and the same M1..M4 corner positions.
+Mô hình Omni-X mặc định giả sử 4 bánh rolling-axis góc 45°.
 
-Let:
+Đặt:
 
 ```text
 S = 1/sqrt(2)
 K = (wheelbase + trackWidth) / 2
 ```
 
-Then:
+Ta có:
 
 ```text
-v1 = S * ( vx - vy - K*wz)
-v2 = S * ( vx + vy - K*wz)
-v3 = S * (-vx - vy - K*wz)
-v4 = S * (-vx + vy - K*wz)
+v1 = S × ( vx - vy - K*wz)
+v2 = S × ( vx + vy - K*wz)
+v3 = S × (-vx - vy - K*wz)
+v4 = S × (-vx + vy - K*wz)
 ```
 
-The corresponding normalized sign basis is:
+Các vector normalized:
 
 ```text
-+vx -> + + - -
-+vy -> - + - +
-+wz -> - - - -
++vx → + + - -
++vy → - + - +
++wz → - - - -
 ```
 
-Omni mechanical layouts can vary, so validate real wheel orientation before relying on the canonical model.
+Vì Omni có nhiều kiểu bố trí thực tế, cần kiểm tra phần cứng trước khi tin hoàn toàn vào model canonical này.
 
 ---
 
-# 11. Wheel-speed limiting
+# 12. Xử lý khi yêu cầu vượt tốc độ
 
-Suppose inverse kinematics requests:
+Sau inverse kinematics, thư viện kiểm tra tốc độ từng bánh.
+
+Ví dụ yêu cầu:
 
 ```text
 M1 = 1.20 m/s
@@ -410,160 +403,114 @@ M3 = 1.50 m/s
 M4 = 1.10 m/s
 ```
 
-but the estimated maximum available wheel speed is:
+nhưng khả năng bánh là:
 
 ```text
 1.00 m/s
 ```
 
-The library does **not** clip only M3.
-
-Instead it scales the whole vector:
+thì:
 
 ```text
 scale = 1.00 / 1.50
 ```
 
-and multiplies all four wheel speeds by the same factor.
+và cả bốn bánh cùng nhân hệ số đó.
 
-This preserves the requested translation/rotation direction better than independent clipping.
+Không clamp riêng bánh M3 vì làm như vậy sẽ làm méo vector chuyển động.
 
 ---
 
-# 12. Open-loop wheel velocity to PWM
+# 13. m/s bánh → PWM vòng hở
 
-After limiting:
+Sau khi giới hạn:
 
 ```text
 PWM_i =
-    255 x v_i / v_wheel_max
+    255 × v_i / v_wheel_max
 ```
 
-with sign retained.
-
-Example:
+Giữ nguyên dấu:
 
 ```text
-requested wheel speed = +0.50 m/s
-estimated max          = 1.00 m/s
-
-PWM = +128 approximately
++0.5 m/s → PWM dương
+-0.5 m/s → PWM âm
 ```
 
-For:
-
-```text
--0.50 m/s
-```
-
-the result is approximately:
-
-```text
--128
-```
-
-The sign is passed to the common safe H-bridge HAL.
+Dấu cuối cùng được đưa vào common HAL để chọn chiều H-bridge.
 
 ---
 
-# 13. Why this is still open-loop
+# 14. Vì sao đây vẫn là vòng hở?
 
-Without an encoder, the controller knows:
-
-```text
-requested velocity
-motor datasheet RPM
-battery voltage
-wheel radius
-chassis geometry
-PWM command
-```
-
-but it does not know the **actual wheel speed**.
-
-Real speed can differ because of:
+Không có encoder thì controller biết:
 
 ```text
-load
-floor friction
-battery sag
-motor mismatch
-L298N loss
-wheel slip
-gearbox friction
-temperature
+vận tốc yêu cầu
+thông số RPM
+điện áp
+bán kính bánh
+kích thước đế
+PWM đã cấp
 ```
 
-Therefore:
+nhưng không biết vận tốc bánh thực tế.
+
+Sai số có thể đến từ:
+
+- tải robot;
+- ma sát sàn;
+- pin;
+- L298N;
+- trượt bánh;
+- gearbox;
+- nhiệt độ;
+- sai lệch giữa các motor.
+
+Vì vậy:
 
 ```cpp
 robot.driveVelocity(0.40f, 0.0f, 0.0f);
 ```
 
-means:
+nghĩa là:
 
-> calculate the PWM that should approximately produce 0.40 m/s according to the configured open-loop model.
+> tính PWM ước lượng để robot đạt khoảng 0.40 m/s theo model đã khai báo.
 
-It does **not** mean:
-
-> guarantee the measured robot speed is exactly 0.40 m/s.
+Không có nghĩa là robot chắc chắn đo được đúng 0.400 m/s.
 
 ---
 
-# 14. Future encoder closed-loop velocity control
+# 15. Nền cho encoder PID
 
-The architecture is intentionally ready for wheel encoders.
-
-Future data flow:
+Về sau có thể thay tầng feed-forward bằng closed-loop:
 
 ```text
-vx, vy, wz target
-      |
+vx, vy, wz mục tiêu
+      ↓
 inverse kinematics
-      |
-wheel velocity targets [m/s or rad/s]
-      |
-+------------------------------+
-| wheel PID M1                 |
-| wheel PID M2                 |
-| wheel PID M3                 |
-| wheel PID M4                 |
-+------------------------------+
-      ^
-      |
-encoder measured wheel speeds
-      |
+      ↓
+target speed M1..M4
+      ↓
+PID M1 ← encoder M1
+PID M2 ← encoder M2
+PID M3 ← encoder M3
+PID M4 ← encoder M4
+      ↓
 PWM
-      |
-motor HAL
 ```
 
-The kinematics layer does not need to change.
-
-Only the open-loop:
-
-```text
-wheel velocity -> PWM
-```
-
-stage is replaced or augmented by closed-loop wheel-speed PID.
+Phần động học phía trên không cần viết lại.
 
 ---
 
-# 15. Future IMU heading hold
+# 16. Nền cho IMU giữ hướng
 
-The standardized yaw unit is:
-
-```text
-wz [rad/s]
-```
-
-A heading controller can therefore generate a yaw-rate correction directly.
-
-Concept:
+IMU có thể đo yaw, sau đó PID sinh correction theo rad/s:
 
 ```cpp
-float yawErrorRad = targetYawRad - measuredYawRad;
+float yawErrorRad =
+    targetYawRad - measuredYawRad;
 
 float wzCorrectionRadps =
     headingPid(yawErrorRad);
@@ -575,44 +522,38 @@ robot.driveVelocity(
 );
 ```
 
-Recommended control architecture:
+Kiến trúc:
 
 ```text
 Joystick / planner
-      |
-  vx [m/s]
-  vy [m/s]
-  wz manual [rad/s]
-      |
-      +-------------------+
-                          |
-IMU yaw -> heading PID -> wz correction [rad/s]
-                          |
-                          v
-                wz final [rad/s]
-                          |
-                  driveVelocity()
-                          |
-                inverse kinematics
-                          |
-                    wheel targets
+      │
+      ├── vx [m/s]
+      ├── vy [m/s]
+      └── wz manual [rad/s]
+                    │
+IMU yaw → PID → wz correction [rad/s]
+                    │
+                    ▼
+             wz final [rad/s]
+                    │
+              driveVelocity()
 ```
 
-This avoids mixing arbitrary PWM units with physical angular-rate units.
+Như vậy PID làm việc bằng đơn vị vật lý thay vì PWM tùy ý.
 
 ---
 
-# 16. Future ROS2 mapping
+# 17. Nền cho ROS2
 
-The body-frame convention allows a direct conceptual mapping from a ROS-style velocity command:
+Có thể map trực tiếp từ `cmd_vel`:
 
 ```text
-linear.x  -> vx [m/s]
-linear.y  -> vy [m/s]
-angular.z -> wz [rad/s]
+linear.x  → vx [m/s]
+linear.y  → vy [m/s]
+angular.z → wz [rad/s]
 ```
 
-Conceptually:
+Về mặt ý tưởng:
 
 ```cpp
 robot.driveVelocity(
@@ -622,34 +563,36 @@ robot.driveVelocity(
 );
 ```
 
-No sign inversion should be required when both systems use the documented right-handed body frame.
+Nếu cả hai bên cùng dùng body frame chuẩn thì không cần đảo dấu thủ công.
 
 ---
 
-# 17. Recommended learning path
+# 18. Lộ trình học gợi ý
 
-For a beginner:
-
-```text
-PWM commands
--> setWheels()
--> forward/left/right helpers
--> drive(vx, vy, wz) normalized
--> driveVelocity(vx, vy, wz) SI
-```
-
-For a student:
+Cho người mới:
 
 ```text
-coordinate frame
--> chassis geometry
--> inverse kinematics
--> wheel RPM / linear velocity
--> forward kinematics
--> open-loop feed-forward
--> encoder velocity PID
--> IMU heading PID
--> odometry / ROS2
+forward()/backward()
+→ setWheels()
+→ drive(vx,vy,wz)
+→ driveVelocity()
 ```
 
-That progression lets the same library serve both simple classroom robots and more advanced mobile-robot control experiments.
+Cho sinh viên:
+
+```text
+hệ tọa độ
+→ kích thước đế
+→ RPM
+→ rad/s
+→ m/s
+→ inverse kinematics
+→ forward kinematics
+→ feed-forward
+→ encoder PID
+→ IMU heading PID
+→ odometry
+→ ROS2
+```
+
+Mục tiêu của thư viện là để cùng một nền tảng có thể dùng từ robot học sinh đến bài thực hành robotics ở bậc đại học.

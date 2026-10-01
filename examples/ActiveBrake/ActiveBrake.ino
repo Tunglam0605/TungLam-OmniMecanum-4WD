@@ -1,53 +1,53 @@
 /**
  * @file ActiveBrake.ino
- * @brief Demonstrates legacy V5 active reverse braking with the current library.
+ * @brief Minh họa cơ chế hãm ngược chủ động ABS với API V5.
  *
- * Hardware:
+ * Phần cứng:
  * - Arduino Mega 2560
- * - 2x L298N
- * - 4 DC motors
+ * - 2 module L298N
+ * - 4 động cơ DC
  *
- * What to observe:
- * 1. The robot drives forward at PWM 150.
- * 2. After 1.5 s, ABS applies reverse torque at PWM 100.
- * 3. Timer3 automatically terminates the brake pulse.
- * 4. The old V5 API does not require robot.update().
+ * Trình tự:
+ * 1. Robot chạy tiến với PWM 150.
+ * 2. Sau 1,5 giây, ABS tạo mô-men ngược với PWM 100.
+ * 3. Timer3 tự động kết thúc xung hãm.
+ * 4. API V5 không cần gọi robot.update().
  *
- * Safety:
- * - Lift the robot for the first test.
- * - Start with conservative ABS duty values.
+ * An toàn:
+ * - Lần đầu nên kê robot lên khỏi mặt sàn.
+ * - Bắt đầu với duty ABS thấp rồi tăng dần theo thực tế.
  */
 
-// Import the original V5-compatible header so old projects can keep the same include.
+// Nạp header tương thích V5 để project cũ vẫn giữ nguyên cách include.
 #include <TungLam_Control_MotorV5.h>
 
-// Create one legacy-compatible controller for the four-wheel drive hardware.
+// Tạo một bộ điều khiển V5 cho toàn bộ 4 động cơ của đế.
 TungLam_Control_MotorV5 robot;
 
 void setup() {
-  // Configure Timer3/Timer4 in the legacy high-frequency PWM mode (~7.8125 kHz).
+  // Khởi tạo Timer3/Timer4 ở chế độ PWM tần số cao khoảng 7,8125 kHz.
   robot.Mode1();
 
-  // Configure the six ABS pulse durations in milliseconds.
-  // The ranges are: <500, <1000, <1500, <2000, <3000, and >=3000 ms of prior motion.
+  // Cấu hình 6 khoảng thời gian hãm ABS theo thời gian robot đã chạy trước đó.
+  // Các khoảng lần lượt là: <500, <1000, <1500, <2000, <3000 và >=3000 ms.
   robot.setTimABS(45, 65, 70, 75, 80, 85);
 
-  // Start from a known safe state with all drive PWM and direction outputs inactive.
+  // Đưa phần cứng về trạng thái dừng an toàn trước khi bắt đầu.
   robot.STOP();
 }
 
 void loop() {
-  // Command all four wheels forward with a common PWM duty of 150.
+  // Cho cả 4 bánh chạy tiến với PWM chung bằng 150.
   robot.moveForward(150);
 
-  // Keep driving forward long enough to enter the 1500..1999 ms ABS timing range.
+  // Duy trì chạy tiến 1,5 giây để rơi vào khoảng timing ABS 1500..1999 ms.
   delay(1500);
 
-  // Apply active reverse braking with the exact user-selected reverse PWM of 100.
-  // The function returns immediately; Timer3 overflow ISR owns the brake cutoff.
+  // Hãm ngược với đúng duty người dùng chọn là 100.
+  // Hàm trả về ngay; Timer3 ISR sẽ tự cắt lực hãm đúng thời gian.
   robot.ABS(100);
 
-  // Demonstration pause only.
-  // No robot.update() call is required by TungLam_Control_MotorV5.
+  // Delay này chỉ để quan sát ví dụ.
+  // TungLam_Control_MotorV5 không yêu cầu robot.update().
   delay(2000);
 }

@@ -1,47 +1,47 @@
 /**
  * @file LegacyApiNewHeader.ino
- * @brief Shows that the new umbrella header still exposes the complete V5 class.
+ * @brief Minh họa việc dùng header mới nhưng vẫn gọi class/API V5 cũ.
  *
- * Use this migration style when you want to include the new main header but
- * keep the original TungLam_Control_MotorV5 class and function calls.
+ * Cách này phù hợp khi project muốn chuyển sang package mới nhưng chưa muốn
+ * đổi tên class hay các hàm điều khiển đã dùng trong code V5.
  */
 
-// Include the new main header instead of the historical compatibility header.
+// Nạp header chính mới của thư viện.
 #include <TungLam_OmniMecanum_4WD.h>
 
-// Instantiate the old V5 class; its public API remains available unchanged.
+// Vẫn tạo object bằng class V5 cũ.
 TungLam_Control_MotorV5 robot;
 
 void setup() {
-  // Configure the drive timers in the historical high-frequency Mode1.
+  // Khởi tạo PWM theo Mode1 như các project V5.
   robot.Mode1();
 
-  // Keep the original six-stage ABS timing configuration model.
+  // Giữ nguyên cách cấu hình 6 mốc thời gian ABS.
   robot.setTimABS(45, 65, 70, 75, 80, 85);
 }
 
 void loop() {
-  // V5 Vietnamese API: Tien() drives forward with independent M1..M4 PWM values.
+  // Tien(): chạy tiến với PWM độc lập cho M1..M4.
   robot.Tien(150, 150, 150, 150);
 
-  // Drive forward for one second.
+  // Giữ chạy tiến 1 giây.
   delay(1000);
 
-  // Apply strong reverse braking at exact PWM 210 using the same old function name.
+  // Hãm ngược với duty chính xác bằng 210.
   robot.ABS(210);
 
-  // Pause after the hardware-timed ABS pulse.
+  // Chờ sau xung ABS hardware-timed.
   delay(1000);
 
-  // N_Phai() performs a right strafe using the legacy per-wheel API.
+  // N_Phai(): đi ngang phải theo API V5.
   robot.N_Phai(140, 140, 140, 140);
 
-  // Hold the right-strafe command for 800 ms.
+  // Giữ đi ngang 800 ms.
   delay(800);
 
-  // Apply active reverse braking at exact PWM 190.
+  // Hãm chuyển động ngang với duty 190.
   robot.ABS(190);
 
-  // Pause before repeating the demonstration.
+  // Chờ trước khi lặp lại.
   delay(1000);
 }

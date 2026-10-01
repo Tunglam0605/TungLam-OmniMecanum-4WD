@@ -1,128 +1,130 @@
-# Wiring & commissioning guide
+[🇻🇳 Tiếng Việt](WIRING.md) • [🌐 English](WIRING.en.md)
 
-This document is the detailed electrical companion to the main README.
+# Hướng dẫn đấu nối và kiểm tra phần cứng
 
-> **Target:** Arduino Mega 2560 + 2× L298N + 4 brushed DC motors.
+Tài liệu này giải thích chi tiết cách đấu **Arduino Mega 2560 + 2× L298N + 4 động cơ DC** cho thư viện `TungLam_OmniMecanum_4WD`.
 
----
-
-## 1. Safety first
-
-Before powering the robot:
-
-- lift the chassis so the wheels can rotate freely;
-- start with low PWM such as 60–80;
-- verify common ground;
-- verify motor-supply polarity;
-- remove ENA/ENB jumpers when EN is driven by Arduino PWM;
-- keep motor current out of the Arduino 5 V rail;
-- stop immediately if an L298N becomes excessively hot.
-
-The library controls logic only. Motor current, battery sizing, wiring gauge, mechanical load, and L298N thermal limits remain hardware responsibilities.
+> Nếu bạn mới làm robot, nên đọc tài liệu này trước khi chạy Mecanum/Omni.
 
 ---
 
-## 2. Logical wheel IDs
+# 1. An toàn trước khi cấp nguồn
 
-Top view:
+Trước khi cấp nguồn cho động cơ:
+
+- kê robot lên để cả 4 bánh không chạm sàn;
+- bắt đầu với PWM thấp khoảng 60–80;
+- kiểm tra đúng cực nguồn;
+- bắt buộc nối chung GND;
+- tháo jumper ENA/ENB nếu Arduino đang xuất PWM vào EN;
+- không cấp nguồn động cơ từ chân 5V Arduino;
+- dừng ngay nếu L298N nóng bất thường.
+
+Thư viện chỉ điều khiển phần logic. Dòng motor, công suất nguồn, tiết diện dây, tải cơ khí và giới hạn nhiệt của L298N vẫn phải do người thiết kế đảm bảo.
+
+---
+
+# 2. Quy ước thứ tự bánh
+
+Nhìn từ trên xuống:
 
 ```text
-                     FRONT / ĐẦU XE
-                           +vx
+                     ĐẦU XE / FRONT
+                           +X
                             ↑
 
               M1                         M3
-         FRONT-LEFT                 FRONT-RIGHT
+         TRƯỚC-TRÁI                  TRƯỚC-PHẢI
             PWM D5                     PWM D7
 
               M2                         M4
-          REAR-LEFT                  REAR-RIGHT
+          SAU-TRÁI                    SAU-PHẢI
             PWM D6                     PWM D8
 
                             ↓
-                      REAR / ĐUÔI XE
+                     ĐUÔI XE / REAR
 ```
 
-Keep these IDs consistent in wiring, code, and troubleshooting.
+Luôn giữ đúng quy ước M1..M4 trong đấu dây, code và tài liệu.
 
 ---
 
-## 3. Recommended L298N allocation
+# 3. Phân chia hai module L298N
 
-### L298N #1
+## L298N số 1
 
-| Channel | Motor | EN/PWM | DIR input 1 | DIR input 2 |
+| Kênh | Motor | EN/PWM | DIR 1 | DIR 2 |
 |---|---|---:|---:|---:|
 | A | M1 | D5 | D30 | D31 |
 | B | M2 | D6 | D32 | D33 |
 
-### L298N #2
+## L298N số 2
 
-| Channel | Motor | EN/PWM | DIR input 1 | DIR input 2 |
+| Kênh | Motor | EN/PWM | DIR 1 | DIR 2 |
 |---|---|---:|---:|---:|
 | A | M3 | D7 | D34 | D35 |
 | B | M4 | D8 | D37 | D36 |
 
-For M4, the logical forward pin is **D37 / PC0** and reverse is **D36 / PC1**.
+> Với M4: **D37 là chiều tiến logic**, **D36 là chiều lùi logic**.
 
 ---
 
-## 4. Complete Arduino pin map
+# 4. Bảng chân Arduino Mega
 
-### PWM / EN
+## PWM / EN
 
-| Motor | Mega pin | AVR output | Timer |
+| Motor | Chân Mega | AVR | Timer |
 |---|---:|---|---|
 | M1 | D5 | PE3 / OC3A | Timer3 |
 | M2 | D6 | PH3 / OC4A | Timer4 |
 | M3 | D7 | PH4 / OC4B | Timer4 |
 | M4 | D8 | PH5 / OC4C | Timer4 |
 
-### Direction
+## Chân chiều
 
-| Motor | Logical forward | Logical reverse |
+| Motor | Tiến (+) | Lùi (-) |
 |---|---:|---:|
 | M1 | D30 / PC7 | D31 / PC6 |
 | M2 | D32 / PC5 | D33 / PC4 |
 | M3 | D34 / PC3 | D35 / PC2 |
 | M4 | D37 / PC0 | D36 / PC1 |
 
-The library owns PORTC D30..D37 for these four direction pairs.
+Thư viện sử dụng PORTC D30..D37 cho 4 cặp chân chiều.
 
 ---
 
-## 5. Power and ground
+# 5. Nguồn và mass chung
 
-Recommended topology:
+Sơ đồ nguyên tắc:
 
 ```text
-Motor battery (+)
+Nguồn motor (+)
       ├──────────────> L298N #1 motor supply
       └──────────────> L298N #2 motor supply
 
-Motor battery (-)
-      ├──────────────> L298N #1 GND
-      ├──────────────> L298N #2 GND
-      └──────────────> Arduino Mega GND
+Nguồn motor (-)
+      ├──────────────> GND L298N #1
+      ├──────────────> GND L298N #2
+      └──────────────> GND Arduino Mega
 ```
 
-### Important notes
+Điều bắt buộc:
 
-- All control electronics need a common reference ground.
-- Do not power four drive motors from the Arduino 5 V pin.
-- L298N modules differ in how the onboard 5 V regulator and 5V-EN jumper are wired.
-- Do not blindly connect module 5 V to Arduino 5 V unless you understand the exact module revision and supply arrangement.
-- Use a motor supply appropriate for your motors.
+```text
+GND Arduino = GND L298N #1 = GND L298N #2 = âm nguồn motor
+```
+
+Không nên nối 5V giữa Arduino và module L298N một cách máy móc nếu chưa hiểu rõ jumper/regulator trên đúng phiên bản module đang dùng.
 
 ---
 
-## 6. ENA / ENB jumpers
+# 6. Jumper ENA / ENB
 
-Many L298N modules ship with jumpers that force ENA and ENB high.
+Nhiều module L298N có jumper ENA/ENB mặc định, khiến EN luôn ở mức HIGH.
 
-If those jumpers remain installed, the motor channel can appear to run only at full speed and Arduino PWM will not control the enable line correctly.
+Nếu vẫn cắm jumper, PWM từ Arduino có thể không điều khiển tốc độ như mong muốn.
 
-For this library:
+Với thư viện này:
 
 ```text
 L298N #1 ENA <- D5
@@ -132,13 +134,13 @@ L298N #2 ENA <- D7
 L298N #2 ENB <- D8
 ```
 
-Remove the fixed EN jumpers before connecting these PWM pins.
+Hãy tháo jumper EN tương ứng trước khi nối D5..D8.
 
 ---
 
-## 7. First commissioning procedure
+# 7. Kiểm tra lần đầu bằng FirstMotorTest
 
-Use:
+Mở Arduino IDE:
 
 ```text
 File
@@ -147,118 +149,138 @@ File
 → FirstMotorTest
 ```
 
-The test sequence is:
+Trình tự test:
 
 ```text
-M1 forward
-M1 reverse
+M1 tiến
+M1 lùi
 
-M2 forward
-M2 reverse
+M2 tiến
+M2 lùi
 
-M3 forward
-M3 reverse
+M3 tiến
+M3 lùi
 
-M4 forward
-M4 reverse
+M4 tiến
+M4 lùi
 ```
 
-Expected physical positions:
+Đúng vị trí phải là:
 
-| Motor | Position |
+| Motor | Vị trí |
 |---|---|
-| M1 | Front-left |
-| M2 | Rear-left |
-| M3 | Front-right |
-| M4 | Rear-right |
+| M1 | Trước-trái |
+| M2 | Sau-trái |
+| M3 | Trước-phải |
+| M4 | Sau-phải |
 
-If one motor is reversed:
+Nếu chỉ một bánh bị ngược chiều:
 
 ```cpp
-robot.setMotorInverted(1, true);
+robot.setMotorInverted(3, true);
 ```
 
-Change only the affected wheel number.
+Không nên sửa phương trình động học để che lỗi đấu dây/polarity.
 
 ---
 
-## 8. Mecanum convention
+# 8. Hệ tọa độ robot
 
-The modern Mecanum mixer intentionally matches the original V5 movement basis.
-
-```text
-Forward       + + + +
-Backward      - - - -
-Right         + - + -
-Left          - + - +
-Rotate right  + + - -
-Rotate left   - - + +
-```
-
-Diagonals:
+Modern API dùng hệ tay phải:
 
 ```text
-Forward-right   + 0 + 0
-Forward-left    0 + 0 +
-Backward-right  0 - 0 -
-Backward-left   - 0 - 0
++vx = tiến
+-vx = lùi
+
++vy = trái
+-vy = phải
+
++wz = quay trái / CCW
+-wz = quay phải / CW
 ```
 
-Cartesian convention:
+Nhìn từ trên xuống:
 
 ```text
-+vx = forward
-+vy = left
-+wz = counter-clockwise
-```
+             +X / +vx
+                ↑
+                |
+      +Y / +vy ← ROBOT
 
-If a newly built chassis does not strafe as expected after motor polarity is correct, inspect the **mechanical Mecanum wheel orientation** before changing software equations.
++wz = quay ngược chiều kim đồng hồ
+```
 
 ---
 
-## 9. Omni X-drive convention
+# 9. Vector Mecanum-X
 
-For Omni X-drive:
+Các vector vật lý chính:
+
+```text
+Tiến            + + + +
+Lùi             - - - -
+
+Trái            - + - +
+Phải            + - + -
+
+Quay trái CCW   - - + +
+Quay phải CW    + + - -
+```
+
+Đường chéo:
+
+```text
+Tiến-phải       + 0 + 0
+Tiến-trái       0 + 0 +
+Lùi-phải        0 - 0 -
+Lùi-trái        - 0 - 0
+```
+
+Nếu robot không đi ngang đúng sau khi đã xác nhận polarity từng motor, hãy kiểm tra **hướng lắp bánh Mecanum** trước khi sửa code.
+
+---
+
+# 10. Omni X-drive
+
+Chọn:
 
 ```cpp
 robot.setChassis(TungLamChassis::OmniX);
 ```
 
-The software convention is still:
+Hệ tọa độ vẫn giữ:
 
 ```text
-+vx = forward
-+vy = left
-+wz = counter-clockwise
++vx = tiến
++vy = trái
++wz = CCW
 ```
 
-Omni mechanical layouts vary. Commission each wheel individually, then test pure vx, pure vy, and pure wz before combined motion.
+Omni có nhiều kiểu bố trí cơ khí khác nhau. Cần test từng bánh, sau đó test riêng pure vx, pure vy, pure wz trước khi dùng chuyển động tổng hợp.
 
 ---
 
-## 10. Direction-change protection
+# 11. Dead-time khi đảo chiều
 
-Both modern and legacy movement commands use the common motor HAL.
-
-When the electrical direction state changes:
+Để giảm việc đảo chiều H-bridge khi PWM vẫn đang hoạt động, common HAL thực hiện:
 
 ```text
 PWM = 0
    ↓
 dead-time
    ↓
-DIR update
+đổi DIR
    ↓
-new PWM
+PWM mới
 ```
 
-Default dead-time:
+Mặc định:
 
 ```text
 100 µs
 ```
 
-Modern API adjustment:
+Có thể thay đổi:
 
 ```cpp
 robot.setDirectionDeadTimeUs(150);
@@ -266,90 +288,82 @@ robot.setDirectionDeadTimeUs(150);
 
 ---
 
-## 11. ABS / active reverse braking
-
-Active reverse braking intentionally applies torque opposite to the current wheel direction.
+# 12. ABS / hãm ngược chủ động
 
 ```cpp
 robot.ABS(180);
 ```
 
-The requested value is the actual brake PWM.
+ABS áp mô-men ngược trong thời gian ngắn rồi Timer3 ISR tự cắt.
 
-Default timing table:
+Bảng mặc định:
 
-| Previous motion time | Brake pulse |
+| Thời gian đã chạy | Thời gian hãm |
 |---:|---:|
 | < 500 ms | 45 ms |
 | < 1000 ms | 65 ms |
 | < 1500 ms | 70 ms |
 | < 2000 ms | 75 ms |
 | < 3000 ms | 80 ms |
-| >= 3000 ms | 85 ms |
+| ≥ 3000 ms | 85 ms |
 
-The Timer3 overflow interrupt acts as a one-shot cutoff, so the reverse pulse does not depend on normal loop timing.
+Điều chỉnh:
 
-### ABS risks
-
-Strong active braking can cause:
-
-- high motor current;
-- L298N heating;
-- battery voltage sag;
-- mechanical shock;
-- wheel slip.
-
-Tune duty and timing conservatively.
-
----
-
-## 12. Timer ownership
-
-The drive library owns:
-
-```text
-Timer3  -> M1 PWM + ABS overflow timing
-Timer4  -> M2 / M3 / M4 PWM
-PORTC   -> D30..D37 direction outputs
+```cpp
+robot.setTimABS(45, 65, 70, 75, 80, 85);
 ```
 
-Other libraries that reconfigure Timer3 or Timer4 may conflict.
-
-The legacy V5 API also retains its historical auxiliary Timer1/Timer2 initialization functions. Use them only if your application understands those timer ownership implications.
+> ABS mạnh có thể gây dòng lớn, nóng driver, sụt áp pin, trượt bánh hoặc sốc hộp số. Tune từ mức thấp.
 
 ---
 
-## 13. Controller ownership
+# 13. Tài nguyên Timer
 
-One Arduino Mega should use one drive-controller API path for the same motor hardware:
+Drive system sử dụng:
 
 ```text
-Legacy:
+Timer3  → PWM M1 + thời gian ABS
+Timer4  → PWM M2/M3/M4
+PORTC   → D30..D37 DIR
+```
+
+Nếu thư viện khác cấu hình lại Timer3/Timer4 thì có thể xung đột.
+
+Legacy V5 vẫn giữ các hàm phụ `Init_Timer1()`, `Init_Timer2()`, nên khi dùng chúng cũng phải chú ý quyền sở hữu timer.
+
+---
+
+# 14. Không dùng đồng thời Legacy và Modern cho cùng phần cứng
+
+Trên một Mega, nên chọn một trong hai:
+
+```text
 TungLam_Control_MotorV5
+```
 
-OR
+hoặc:
 
-Modern:
+```text
 TungLamDrive4WD
 ```
 
-Do not instantiate both to control the same D5..D8 / D30..D37 outputs simultaneously.
+Không nên để cả hai object cùng điều khiển D5..D8 và D30..D37.
 
 ---
 
-## 14. Troubleshooting checklist
+# 15. Checklist xử lý lỗi
 
-If the robot behaves incorrectly, check in this order:
+Nếu robot chạy sai, kiểm tra theo thứ tự:
 
-1. common ground;
-2. EN jumpers removed;
-3. correct motor ID M1..M4;
-4. correct PWM pins D5..D8;
-5. correct DIR pins D30..D37;
-6. one-wheel polarity using FirstMotorTest;
-7. Mecanum/Omni mechanical wheel orientation;
-8. battery voltage under load;
-9. L298N temperature;
-10. only then inspect software settings.
+1. GND đã chung chưa.
+2. Jumper ENA/ENB đã tháo chưa.
+3. M1..M4 có đúng vị trí không.
+4. D5..D8 có đúng EN không.
+5. D30..D37 có đúng DIR không.
+6. Chạy FirstMotorTest để kiểm tra polarity.
+7. Kiểm tra hướng lắp bánh Mecanum/Omni.
+8. Kiểm tra điện áp pin khi có tải.
+9. Kiểm tra nhiệt độ L298N.
+10. Sau cùng mới chỉnh software.
 
-This order avoids masking hardware mistakes with software sign changes.
+Làm theo thứ tự này giúp tránh việc “sửa code để che lỗi phần cứng”.
