@@ -642,6 +642,48 @@ class TungLamDrive4WD {
   bool driveVelocity(float vxMps, float vyMps, float wzRadps);
 
   /**
+   * @brief Enable command watchdog and SI velocity smoothing with one call.
+   * @param timeoutMs Command timeout [ms]; 0 disables watchdog.
+   * @param linearAccelMps2 Maximum vx/vy slew rate [m/s^2]; <=0 disables smoothing.
+   * @param yawAccelRadps2 Maximum wz slew rate [rad/s^2]; <=0 disables smoothing.
+   */
+  void enableSmartSafety(uint16_t timeoutMs = 500,
+                         float linearAccelMps2 = 1.0f,
+                         float yawAccelRadps2 = 2.0f);
+
+  /** @brief Disable watchdog and SI velocity smoothing. */
+  void disableSmartSafety();
+
+  /** @brief Configure command-loss watchdog. @param timeoutMs Timeout [ms]; 0 disables it. */
+  void setCommandTimeoutMs(uint16_t timeoutMs);
+
+  /** @brief Return true if watchdog stopped the robot after command loss. */
+  bool commandTimedOut() const;
+
+  /**
+   * @brief Enable SI body-velocity slew-rate limiting.
+   * @param linearAccelMps2 Maximum vx/vy slew rate [m/s^2].
+   * @param yawAccelRadps2 Maximum wz slew rate [rad/s^2].
+   * @return true for valid positive limits; false disables the ramp.
+   */
+  bool setVelocityRamp(float linearAccelMps2, float yawAccelRadps2);
+
+  /** @brief Disable SI velocity slew-rate limiting. */
+  void disableVelocityRamp();
+
+  /** @brief Return true if the latest SI command required wheel-speed scaling. */
+  bool wasVelocityLimited() const;
+
+  /** @brief Return latest SI saturation scale; 1.0 means no scaling. */
+  float lastVelocityScale() const;
+
+  /** @brief Return requested body velocity before shaping. */
+  TungLamBodyVelocity requestedBodyVelocity() const;
+
+  /** @brief Return estimated applied body velocity after shaping/saturation. */
+  TungLamBodyVelocity appliedBodyVelocity() const;
+
+  /**
    * @brief Apply the TungLam/V5-compatible Mecanum-X mixer directly.
    *
    * Standard body-frame basis vectors:
@@ -752,6 +794,29 @@ class TungLamDrive4WD {
   TungLamPwmMode pwmMode_;  ///< Hardware PWM mode selected by begin().
   TungLamDriveConfig driveConfig_; ///< SI/open-loop physical drive model.
   bool driveConfigValid_;   ///< True after a valid physical model is configured.
+
+  float cachedLeverM_;
+  float cachedMotorRpm_;
+  float cachedMaxWheelMps_;
+  float cachedPwmPerMps_;
+  float cachedMaxBodyMps_;
+  float cachedMaxYawRadps_;
+
+  TungLamBodyVelocity requestedBodyVelocity_;
+  TungLamBodyVelocity rampedBodyVelocity_;
+  TungLamBodyVelocity appliedBodyVelocity_;
+  float lastVelocityScale_;
+  bool velocityLimited_;
+
+  uint16_t commandTimeoutMs_;
+  uint32_t lastCommandMs_;
+  bool commandTimedOut_;
+  bool velocityRampEnabled_;
+  bool velocityRampPrimed_;
+  float linearAccelMps2_;
+  float yawAccelRadps2_;
+  uint32_t lastVelocityUpdateMs_;
+
   bool inverted_[4];        ///< Per-wheel physical inversion flags.
   uint16_t deadTimeUs_;     ///< Direction-transition dead-time in microseconds.
 
@@ -797,12 +862,21 @@ class TungLamDrive4WD {
   // Validate positive physical-model parameters.
   static bool driveConfigIsValid(const TungLamDriveConfig& config);
 
+  void rebuildDerivedModel();
+  void rebuildChassisLimits();
+  void noteCommandReceived();
+  void resetVelocityRampState();
+  TungLamBodyVelocity applyVelocityRamp(const TungLamBodyVelocity& target,
+                                        uint32_t nowMs);
+  static float approachFloat(float current, float target, float maxDelta);
+
   // Convert one signed wheel-perimeter velocity to signed PWM feed-forward.
   int16_t wheelVelocityToPwm(float wheelMps) const;
 
   // Proportionally scale a metric wheel vector to the available wheel speed.
   TungLamWheelVelocity limitWheelVelocities(
-      const TungLamWheelVelocity& wheels) const;
+      const TungLamWheelVelocity& wheels,
+      float* scaleOut = nullptr) const;
 
   // Proportionally scale a four-wheel vector when any magnitude exceeds 255.
   static Wheels normalize(int32_t m1, int32_t m2, int32_t m3, int32_t m4);

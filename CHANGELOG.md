@@ -7,6 +7,22 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.0] - 2026-10-01
+
+### Smart control and AVR optimization
+- Cached motor/chassis derived constants at configuration time so the frequent SI control path no longer recomputes repeated RPM/geometry divisions per wheel.
+- Added `enableSmartSafety()` as a beginner-friendly one-call setup for command watchdog and SI velocity smoothing.
+- Added configurable command watchdog through `setCommandTimeoutMs()`; `update()` safely stops a moving robot after command loss.
+- Added `setVelocityRamp()` / `disableVelocityRamp()` for component-wise vx/vy/wz slew-rate limiting in SI units.
+- Added saturation telemetry: `wasVelocityLimited()`, `lastVelocityScale()`, `requestedBodyVelocity()`, and `appliedBodyVelocity()`.
+- Added `StudentQuickStart` as the recommended beginner example.
+- Added automatic public-API documentation coverage checking; 75/75 public functions must keep Vietnamese Arduino IDE hints.
+
+### Compatibility
+- Legacy V5 executable behavior remains unchanged.
+- Smart Safety is opt-in, so existing modern projects keep their previous immediate-command behavior unless explicitly enabled.
+- Velocity ramp affects `driveVelocity()` only; direct PWM/normalized APIs remain immediate.
+
 ## [0.9.2] - 2026-10-01
 
 ### Complete Arduino IDE API hints

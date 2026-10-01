@@ -14,6 +14,9 @@ jobs:
       - name: Verify Vietnamese/English localization parity
         run: python3 tools/check_localization.py
 
+      - name: Verify Vietnamese public API hints
+        run: python3 tools/check_api_docs.py
+
       - name: Arduino Lint
         uses: arduino/arduino-lint-action@v3
         with:

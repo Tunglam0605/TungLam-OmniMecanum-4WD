@@ -84,3 +84,13 @@ m4Mps	KEYWORD2
 vxMps	KEYWORD2
 vyMps	KEYWORD2
 wzRadps	KEYWORD2
+enableSmartSafety	KEYWORD2
+disableSmartSafety	KEYWORD2
+setCommandTimeoutMs	KEYWORD2
+commandTimedOut	KEYWORD2
+setVelocityRamp	KEYWORD2
+disableVelocityRamp	KEYWORD2
+wasVelocityLimited	KEYWORD2
+lastVelocityScale	KEYWORD2
+requestedBodyVelocity	KEYWORD2
+appliedBodyVelocity	KEYWORD2

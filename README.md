@@ -442,6 +442,67 @@ Motor HAL
 
 ---
 
+# 🧠 Chế độ Smart Safety — để thư viện tự lo phần khó
+
+Với project học sinh/sinh viên, cấu hình một lần trong `setup()`:
+
+```cpp
+robot.enableSmartSafety(
+    500,   // mất lệnh 500 ms -> tự dừng
+    1.0f,  // giới hạn thay đổi vx/vy: 1.0 m/s²
+    2.0f   // giới hạn thay đổi wz: 2.0 rad/s²
+);
+```
+
+Sau đó trong `loop()` chỉ cần:
+
+```cpp
+robot.update();
+robot.driveVelocity(vx, vy, wz);
+```
+
+Thư viện tự xử lý:
+
+```text
+lệnh vx,vy,wz
+    ↓
+soft-start / giới hạn tăng giảm tốc
+    ↓
+inverse kinematics
+    ↓
+tốc độ từng bánh
+    ↓
+kiểm tra vượt khả năng motor
+    ↓
+scale đồng đều nếu cần
+    ↓
+cache motor model -> PWM
+    ↓
+safe direction + dead-time
+    ↓
+L298N + motor
+
+nếu mất lệnh quá timeout
+    ↓
+watchdog tự stop
+```
+
+Các phép chia float nặng của motor model/geometry được **tính trước và cache khi gọi `setDriveConfig()`**, nên vòng `driveVelocity()` chạy nhẹ hơn trên ATmega2560.
+
+Nếu muốn biết lệnh vừa bị giới hạn:
+
+```cpp
+if (robot.wasVelocityLimited()) {
+  float scale = robot.lastVelocityScale();
+}
+```
+
+Ví dụ `scale = 0.60` nghĩa là vector tốc độ được giảm đồng đều còn khoảng 60% để không vượt khả năng bánh.
+
+> Watchdog cần `robot.update()` được gọi liên tục trong `loop()`. Mặc định Smart Safety **không tự bật**, nên code cũ vẫn giữ hành vi như trước.
+
+---
+
 # 🚧 Nếu yêu cầu vận tốc quá lớn thì sao?
 
 Thư viện xử lý ở tầng **vận tốc bánh**, không clamp riêng từng `vx`, `vy`, `wz`.
@@ -620,6 +681,7 @@ Tách như vậy giúp thư viện dùng được với PS2, Bluetooth, ESP-NOW,
 | **OmniXDrive** | Dùng Omni X-drive |
 | **PerWheelControl** | Điều khiển trực tiếp từng bánh |
 | **MetricKinematics** | Khai báo motor/chassis, m/s, rad/s, IK/FK |
+| **StudentQuickStart** | Ví dụ khuyến nghị: Smart Safety + driveVelocity() tối giản |
 | **ActiveBrake** | ABS |
 | **ActiveBrakeNonBlocking** | ABS không block chương trình |
 | **LegacyV5DropIn** | Giữ nguyên code V5 |
@@ -696,8 +758,8 @@ Từ v0.9.2, public API được audit đầy đủ:
 
 ```text
 Legacy V5   : 29/29 hàm có mô tả tiếng Việt
-Modern API  : 36/36 hàm có mô tả tiếng Việt
-Tổng        : 65/65
+Modern API  : 46/46 hàm có mô tả tiếng Việt
+Tổng        : 75/75
 
 @brief  : đầy đủ
 @param  : đầy đủ cho mọi hàm có tham số
