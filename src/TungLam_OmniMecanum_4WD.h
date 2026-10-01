@@ -543,6 +543,71 @@ class TungLamDrive4WD {
   bool driveVelocity(float vxMps, float vyMps, float wzRadps);
 
   /**
+   * @brief Bật gói an toàn thông minh chỉ bằng một lệnh.
+   * @param timeoutMs Thời gian tối đa không nhận lệnh mới trước khi tự dừng [ms]. 0 = tắt watchdog.
+   * @param linearAccelMps2 Giới hạn thay đổi vx/vy [m/s^2]. <=0 = không giới hạn mềm.
+   * @param yawAccelRadps2 Giới hạn thay đổi wz [rad/s^2]. <=0 = không giới hạn mềm.
+   *
+   * Sau khi bật, hãy gọi update() liên tục trong loop(). Thư viện tự xử lý
+   * watchdog mất lệnh và làm mượt driveVelocity().
+   */
+  void enableSmartSafety(uint16_t timeoutMs = 500,
+                         float linearAccelMps2 = 1.0f,
+                         float yawAccelRadps2 = 2.0f);
+
+  /** @brief Tắt watchdog và giới hạn tăng/giảm tốc thông minh. */
+  void disableSmartSafety();
+
+  /**
+   * @brief Đặt watchdog tự dừng nếu chương trình mất lệnh điều khiển.
+   * @param timeoutMs Timeout [ms]. 0 = tắt watchdog.
+   *
+   * Cần gọi update() liên tục trong loop() để watchdog hoạt động.
+   */
+  void setCommandTimeoutMs(uint16_t timeoutMs);
+
+  /**
+   * @brief Kiểm tra watchdog có vừa tự dừng robot do mất lệnh hay không.
+   * @return true nếu timeout đã xảy ra kể từ lệnh điều khiển hợp lệ gần nhất.
+   */
+  bool commandTimedOut() const;
+
+  /**
+   * @brief Bật giới hạn tăng/giảm vận tốc cho driveVelocity().
+   * @param linearAccelMps2 Mức thay đổi tối đa của vx và vy [m/s^2].
+   * @param yawAccelRadps2 Mức thay đổi tối đa của wz [rad/s^2].
+   * @return true nếu cả hai giới hạn >0; false nếu thông số không hợp lệ và ramp bị tắt.
+   */
+  bool setVelocityRamp(float linearAccelMps2, float yawAccelRadps2);
+
+  /** @brief Tắt giới hạn tăng/giảm vận tốc của driveVelocity(). */
+  void disableVelocityRamp();
+
+  /**
+   * @brief Kiểm tra lệnh SI gần nhất có vượt khả năng tốc độ của đế hay không.
+   * @return true nếu thư viện phải scale tốc độ 4 bánh xuống để không vượt model.
+   */
+  bool wasVelocityLimited() const;
+
+  /**
+   * @brief Đọc hệ số scale của lệnh SI gần nhất.
+   * @return 1.0 nếu không giới hạn; ví dụ 0.5 nghĩa là vector đã giảm còn 50%.
+   */
+  float lastVelocityScale() const;
+
+  /**
+   * @brief Đọc vx,vy,wz mà người dùng yêu cầu gần nhất trước ramp/saturation.
+   * @return TungLamBodyVelocity theo m/s và rad/s.
+   */
+  TungLamBodyVelocity requestedBodyVelocity() const;
+
+  /**
+   * @brief Đọc vx,vy,wz ước lượng mà thư viện thực sự áp sau ramp/saturation.
+   * @return TungLamBodyVelocity theo m/s và rad/s.
+   */
+  TungLamBodyVelocity appliedBodyVelocity() const;
+
+  /**
    * @brief Điều khiển trực tiếp mixer Mecanum-X bằng vx, vy, wz normalized.
    * @param vx -255..255; dương=tiến.
    * @param vy -255..255; dương=trái.
@@ -681,6 +746,29 @@ class TungLamDrive4WD {
   TungLamPwmMode pwmMode_;             // Chế độ PWM phần cứng.
   TungLamDriveConfig driveConfig_;     // Model vật lý motor/chassis.
   bool driveConfigValid_;              // Model vật lý đã hợp lệ hay chưa.
+
+  float cachedLeverM_;                 // (wheelbase + trackWidth) / 2.
+  float cachedMotorRpm_;               // RPM đã áp tỷ lệ điện áp + speedScale.
+  float cachedMaxWheelMps_;            // Tốc độ bánh cực đại ước lượng.
+  float cachedPwmPerMps_;              // Hệ số m/s -> PWM.
+  float cachedMaxBodyMps_;             // Tốc độ tịnh tiến cực đại của chassis.
+  float cachedMaxYawRadps_;            // Tốc độ quay cực đại của chassis.
+
+  TungLamBodyVelocity requestedBodyVelocity_; // Lệnh SI người dùng yêu cầu.
+  TungLamBodyVelocity rampedBodyVelocity_;    // Lệnh sau bộ làm mượt.
+  TungLamBodyVelocity appliedBodyVelocity_;   // Lệnh sau saturation.
+  float lastVelocityScale_;            // 1.0 = không saturation.
+  bool velocityLimited_;               // Lệnh SI gần nhất có bị scale hay không.
+
+  uint16_t commandTimeoutMs_;          // 0 = watchdog tắt.
+  uint32_t lastCommandMs_;             // Thời điểm nhận lệnh motor gần nhất.
+  bool commandTimedOut_;               // Watchdog vừa tự dừng robot.
+  bool velocityRampEnabled_;           // Bật làm mượt SI.
+  bool velocityRampPrimed_;            // Ramp đã có mốc thời gian hay chưa.
+  float linearAccelMps2_;              // Slew rate vx/vy.
+  float yawAccelRadps2_;               // Slew rate wz.
+  uint32_t lastVelocityUpdateMs_;      // Mốc dt của ramp.
+
   bool inverted_[4];                   // Cờ đảo polarity từng motor.
   uint16_t deadTimeUs_;                // Dead-time khi đổi trạng thái chiều.
 
@@ -726,12 +814,32 @@ class TungLamDrive4WD {
   /** @brief Kiểm tra các thông số model vật lý có hợp lệ hay không. */
   static bool driveConfigIsValid(const TungLamDriveConfig& config);
 
+  /** @brief Tính trước các hằng số motor/động học để control loop chạy nhẹ hơn. */
+  void rebuildDerivedModel();
+
+  /** @brief Cập nhật giới hạn thân robot khi đổi chassis. */
+  void rebuildChassisLimits();
+
+  /** @brief Ghi nhận một lệnh mới để reset watchdog. */
+  void noteCommandReceived();
+
+  /** @brief Reset state của bộ làm mượt vận tốc. */
+  void resetVelocityRampState();
+
+  /** @brief Áp giới hạn tăng/giảm vận tốc trong body frame. */
+  TungLamBodyVelocity applyVelocityRamp(const TungLamBodyVelocity& target,
+                                        uint32_t nowMs);
+
+  /** @brief Tiến một giá trị float về target nhưng không vượt maxDelta. */
+  static float approachFloat(float current, float target, float maxDelta);
+
   /** @brief Quy đổi vận tốc tiếp tuyến bánh [m/s] thành PWM feed-forward. */
   int16_t wheelVelocityToPwm(float wheelMps) const;
 
   /** @brief Scale vector tốc độ bánh về giới hạn vật lý nhưng giữ tỷ lệ. */
   TungLamWheelVelocity limitWheelVelocities(
-      const TungLamWheelVelocity& wheels) const;
+      const TungLamWheelVelocity& wheels,
+      float* scaleOut = nullptr) const;
 
   /** @brief Chuẩn hóa vector bánh normalized để không vượt 255. */
   static Wheels normalize(int32_t m1, int32_t m2, int32_t m3, int32_t m4);

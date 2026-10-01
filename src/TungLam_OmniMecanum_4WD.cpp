@@ -343,6 +343,25 @@ TungLamDrive4WD::TungLamDrive4WD()
       pwmMode_(TungLamPwmMode::High7k8Hz),
       driveConfig_(),
       driveConfigValid_(false),
+      cachedLeverM_(0.0f),
+      cachedMotorRpm_(0.0f),
+      cachedMaxWheelMps_(0.0f),
+      cachedPwmPerMps_(0.0f),
+      cachedMaxBodyMps_(0.0f),
+      cachedMaxYawRadps_(0.0f),
+      requestedBodyVelocity_{0.0f, 0.0f, 0.0f},
+      rampedBodyVelocity_{0.0f, 0.0f, 0.0f},
+      appliedBodyVelocity_{0.0f, 0.0f, 0.0f},
+      lastVelocityScale_(1.0f),
+      velocityLimited_(false),
+      commandTimeoutMs_(0),
+      lastCommandMs_(0),
+      commandTimedOut_(false),
+      velocityRampEnabled_(false),
+      velocityRampPrimed_(false),
+      linearAccelMps2_(0.0f),
+      yawAccelRadps2_(0.0f),
+      lastVelocityUpdateMs_(0),
       inverted_{false, false, false, false},
       deadTimeUs_(100),
       commanded_{0, 0, 0, 0},
@@ -363,7 +382,6 @@ TungLamDrive4WD::TungLamDrive4WD()
 
 // Khởi tạo GPIO, timer PWM và trạng thái dừng.
 void TungLamDrive4WD::begin(TungLamPwmMode pwmMode) {
-
   cancelTimedBrake(true);
 
   pwmMode_ = pwmMode;
@@ -375,10 +393,13 @@ void TungLamDrive4WD::begin(TungLamPwmMode pwmMode) {
   DDRH |= (1 << PH3) | (1 << PH4) | (1 << PH5);
 
   initPwm();
+
+  lastCommandMs_ = millis();
+  commandTimedOut_ = false;
+  resetVelocityRampState();
   stop();
 }
 
-// Cấu hình Timer3/Timer4 theo mode PWM đã chọn.
 void TungLamDrive4WD::initPwm() {
   TCCR3A = 0;
   TCCR3B = 0;
@@ -411,7 +432,6 @@ void TungLamDrive4WD::initPwm() {
 
 // Đồng bộ state phần mềm sau khi ISR đã kết thúc ABS ở tầng phần cứng.
 void TungLamDrive4WD::update() {
-
   if (braking_ && !timedBrakeIsActive()) {
     braking_ = false;
     moving_ = false;
@@ -420,11 +440,31 @@ void TungLamDrive4WD::update() {
     brakeDurationMs_ = 0;
     commanded_ = {0, 0, 0, 0};
     applied_ = {0, 0, 0, 0};
+    appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+    resetVelocityRampState();
+  }
+
+  if (commandTimeoutMs_ > 0 &&
+      moving_ &&
+      !braking_ &&
+      !dynamicBraking_) {
+    const uint32_t now = millis();
+    if ((uint32_t)(now - lastCommandMs_) >= commandTimeoutMs_) {
+      commanded_ = {0, 0, 0, 0};
+      moving_ = false;
+      motionStartMs_ = 0;
+      applyWheelsRaw(commanded_);
+      appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+      resetVelocityRampState();
+      commandTimedOut_ = true;
+    }
   }
 }
 
 void TungLamDrive4WD::setChassis(TungLamChassis chassis) {
   chassis_ = chassis;
+  rebuildChassisLimits();
+  resetVelocityRampState();
 }
 
 TungLamChassis TungLamDrive4WD::chassis() const {
@@ -446,6 +486,7 @@ void TungLamDrive4WD::setDirectionDeadTimeUs(uint16_t deadTimeUs) {
 void TungLamDrive4WD::setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4) {
 
   update();
+  noteCommandReceived();
 
   Wheels next = {
       clampWheel(m1),
@@ -511,6 +552,8 @@ bool TungLamDrive4WD::setDriveConfig(const TungLamDriveConfig& config) {
 
   driveConfig_ = config;
   driveConfigValid_ = true;
+  rebuildDerivedModel();
+  resetVelocityRampState();
   return true;
 }
 
@@ -524,52 +567,21 @@ bool TungLamDrive4WD::hasDriveConfig() const {
 
 // Ước lượng RPM từ RPM danh định, tỷ lệ điện áp và speedScale.
 float TungLamDrive4WD::estimatedMotorRpmAtSupply() const {
-  if (!driveConfigValid_) {
-    return 0.0f;
-  }
-
-  return driveConfig_.motorNoLoadRpm *
-         (driveConfig_.supplyVoltageV / driveConfig_.motorNominalVoltageV) *
-         driveConfig_.speedScale;
+  return driveConfigValid_ ? cachedMotorRpm_ : 0.0f;
 }
 
 float TungLamDrive4WD::maxWheelLinearSpeedMps() const {
-  if (!driveConfigValid_) {
-    return 0.0f;
-  }
-
-  const float wheelRps = estimatedMotorRpmAtSupply() / 60.0f;
-  return wheelRps * kTwoPi * driveConfig_.wheelRadiusM;
+  return driveConfigValid_ ? cachedMaxWheelMps_ : 0.0f;
 }
 
 float TungLamDrive4WD::maxBodyLinearSpeedMps() const {
-  const float wheelMax = maxWheelLinearSpeedMps();
-  if (wheelMax <= 0.0f) {
-    return 0.0f;
-  }
-
-  return chassis_ == TungLamChassis::OmniX ? wheelMax * kSqrt2 : wheelMax;
+  return driveConfigValid_ ? cachedMaxBodyMps_ : 0.0f;
 }
 
 float TungLamDrive4WD::maxYawRateRadps() const {
-  const float wheelMax = maxWheelLinearSpeedMps();
-  if (wheelMax <= 0.0f) {
-    return 0.0f;
-  }
-
-  const float lever =
-      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
-
-  if (lever <= 0.0f) {
-    return 0.0f;
-  }
-
-  return chassis_ == TungLamChassis::OmniX
-             ? wheelMax / (kInvSqrt2 * lever)
-             : wheelMax / lever;
+  return driveConfigValid_ ? cachedMaxYawRadps_ : 0.0f;
 }
 
-// Động học nghịch: body velocity SI -> vận tốc tiếp tuyến 4 bánh.
 TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
     float vxMps,
     float vyMps,
@@ -578,8 +590,7 @@ TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
     return {0.0f, 0.0f, 0.0f, 0.0f};
   }
 
-  const float lever =
-      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+  const float lever = cachedLeverM_;
 
   if (chassis_ == TungLamChassis::OmniX) {
 
@@ -606,8 +617,7 @@ TungLamBodyVelocity TungLamDrive4WD::forwardKinematics(
     return {0.0f, 0.0f, 0.0f};
   }
 
-  const float lever =
-      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+  const float lever = cachedLeverM_;
 
   if (lever <= 0.0f) {
     return {0.0f, 0.0f, 0.0f};
@@ -644,9 +654,28 @@ bool TungLamDrive4WD::driveVelocity(
     return false;
   }
 
+  const uint32_t now = millis();
+  requestedBodyVelocity_ = {vxMps, vyMps, wzRadps};
+
+  const TungLamBodyVelocity shaped =
+      applyVelocityRamp(requestedBodyVelocity_, now);
+  rampedBodyVelocity_ = shaped;
+
   const TungLamWheelVelocity requested =
-      inverseKinematics(vxMps, vyMps, wzRadps);
-  const TungLamWheelVelocity limited = limitWheelVelocities(requested);
+      inverseKinematics(shaped.vxMps, shaped.vyMps, shaped.wzRadps);
+
+  float scale = 1.0f;
+  const TungLamWheelVelocity limited =
+      limitWheelVelocities(requested, &scale);
+
+  lastVelocityScale_ = scale;
+  velocityLimited_ = scale < 0.9999f;
+
+  appliedBodyVelocity_ = {
+      shaped.vxMps * scale,
+      shaped.vyMps * scale,
+      shaped.wzRadps * scale
+  };
 
   setWheels(
       wheelVelocityToPwm(limited.m1Mps),
@@ -657,7 +686,72 @@ bool TungLamDrive4WD::driveVelocity(
   return true;
 }
 
-// Mixer normalized Mecanum-X.
+void TungLamDrive4WD::enableSmartSafety(
+    uint16_t timeoutMs,
+    float linearAccelMps2,
+    float yawAccelRadps2) {
+  setCommandTimeoutMs(timeoutMs);
+
+  if (linearAccelMps2 > 0.0f && yawAccelRadps2 > 0.0f) {
+    setVelocityRamp(linearAccelMps2, yawAccelRadps2);
+  } else {
+    disableVelocityRamp();
+  }
+}
+
+void TungLamDrive4WD::disableSmartSafety() {
+  setCommandTimeoutMs(0);
+  disableVelocityRamp();
+}
+
+void TungLamDrive4WD::setCommandTimeoutMs(uint16_t timeoutMs) {
+  commandTimeoutMs_ = timeoutMs;
+  commandTimedOut_ = false;
+  lastCommandMs_ = millis();
+}
+
+bool TungLamDrive4WD::commandTimedOut() const {
+  return commandTimedOut_;
+}
+
+bool TungLamDrive4WD::setVelocityRamp(
+    float linearAccelMps2,
+    float yawAccelRadps2) {
+  if (linearAccelMps2 <= 0.0f || yawAccelRadps2 <= 0.0f) {
+    disableVelocityRamp();
+    return false;
+  }
+
+  linearAccelMps2_ = linearAccelMps2;
+  yawAccelRadps2_ = yawAccelRadps2;
+  velocityRampEnabled_ = true;
+  resetVelocityRampState();
+  return true;
+}
+
+void TungLamDrive4WD::disableVelocityRamp() {
+  velocityRampEnabled_ = false;
+  linearAccelMps2_ = 0.0f;
+  yawAccelRadps2_ = 0.0f;
+  resetVelocityRampState();
+}
+
+bool TungLamDrive4WD::wasVelocityLimited() const {
+  return velocityLimited_;
+}
+
+float TungLamDrive4WD::lastVelocityScale() const {
+  return lastVelocityScale_;
+}
+
+TungLamBodyVelocity TungLamDrive4WD::requestedBodyVelocity() const {
+  return requestedBodyVelocity_;
+}
+
+TungLamBodyVelocity TungLamDrive4WD::appliedBodyVelocity() const {
+  return appliedBodyVelocity_;
+}
+
 void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
 
   const Wheels out = normalize(
@@ -706,11 +800,21 @@ void TungLamDrive4WD::rotateLeft(uint8_t duty) {
 }
 
 void TungLamDrive4WD::stop() {
+  noteCommandReceived();
+
   braking_ = false;
   dynamicBraking_ = false;
   moving_ = false;
   motionStartMs_ = 0;
   commanded_ = {0, 0, 0, 0};
+
+  requestedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  rampedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  lastVelocityScale_ = 1.0f;
+  velocityLimited_ = false;
+  resetVelocityRampState();
+
   applyWheelsRaw(commanded_);
 }
 
@@ -720,6 +824,7 @@ void TungLamDrive4WD::coast() {
 
 // Hãm điện bằng trạng thái bridge của L298N, khác với ABS hãm ngược.
 void TungLamDrive4WD::dynamicBrake() {
+  noteCommandReceived();
   cancelTimedBrake(true);
 
   braking_ = false;
@@ -730,16 +835,22 @@ void TungLamDrive4WD::dynamicBrake() {
   brakeDurationMs_ = 0;
   commanded_ = {0, 0, 0, 0};
 
+  requestedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  lastVelocityScale_ = 1.0f;
+  velocityLimited_ = false;
+  resetVelocityRampState();
+
   PORTC = 0x00;
   halWriteAllPwm(255);
   halRememberApplied({0, 0, 0, 0});
   applied_ = {0, 0, 0, 0};
 }
 
-// ABS Modern: đảo mô-men theo dấu lệnh trước đó và Timer3 tự cắt xung.
 void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
 
   update();
+  noteCommandReceived();
 
   if (braking_ && timedBrakeIsActive()) {
     return;
@@ -786,6 +897,8 @@ void TungLamDrive4WD::ABS(uint8_t brakeDuty) {
   commanded_ = {0, 0, 0, 0};
   motionStartMs_ = 0;
   brakeStartMs_ = millis();
+  appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+  resetVelocityRampState();
 
   applyWheelsRaw(reverse);
 
@@ -805,6 +918,8 @@ bool TungLamDrive4WD::isBraking() const {
 }
 
 void TungLamDrive4WD::cancelBrake() {
+  noteCommandReceived();
+
   if (braking_ || dynamicBraking_ || timedBrakeIsActive()) {
     cancelTimedBrake(true);
     braking_ = false;
@@ -815,6 +930,8 @@ void TungLamDrive4WD::cancelBrake() {
     brakeDurationMs_ = 0;
     commanded_ = {0, 0, 0, 0};
     applied_ = {0, 0, 0, 0};
+    appliedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+    resetVelocityRampState();
   }
 }
 
@@ -912,24 +1029,143 @@ bool TungLamDrive4WD::driveConfigIsValid(const TungLamDriveConfig& config) {
 }
 
 // Quy đổi m/s của bánh sang PWM feed-forward có dấu.
+void TungLamDrive4WD::rebuildDerivedModel() {
+  if (!driveConfigValid_) {
+    cachedLeverM_ = 0.0f;
+    cachedMotorRpm_ = 0.0f;
+    cachedMaxWheelMps_ = 0.0f;
+    cachedPwmPerMps_ = 0.0f;
+    cachedMaxBodyMps_ = 0.0f;
+    cachedMaxYawRadps_ = 0.0f;
+    return;
+  }
+
+  cachedLeverM_ =
+      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+
+  cachedMotorRpm_ =
+      driveConfig_.motorNoLoadRpm *
+      (driveConfig_.supplyVoltageV / driveConfig_.motorNominalVoltageV) *
+      driveConfig_.speedScale;
+
+  cachedMaxWheelMps_ =
+      (cachedMotorRpm_ / 60.0f) *
+      kTwoPi *
+      driveConfig_.wheelRadiusM;
+
+  cachedPwmPerMps_ =
+      cachedMaxWheelMps_ > 0.0f ? (255.0f / cachedMaxWheelMps_) : 0.0f;
+
+  rebuildChassisLimits();
+}
+
+void TungLamDrive4WD::rebuildChassisLimits() {
+  if (!driveConfigValid_ ||
+      cachedMaxWheelMps_ <= 0.0f ||
+      cachedLeverM_ <= 0.0f) {
+    cachedMaxBodyMps_ = 0.0f;
+    cachedMaxYawRadps_ = 0.0f;
+    return;
+  }
+
+  if (chassis_ == TungLamChassis::OmniX) {
+    cachedMaxBodyMps_ = cachedMaxWheelMps_ * kSqrt2;
+    cachedMaxYawRadps_ =
+        cachedMaxWheelMps_ / (kInvSqrt2 * cachedLeverM_);
+  } else {
+    cachedMaxBodyMps_ = cachedMaxWheelMps_;
+    cachedMaxYawRadps_ = cachedMaxWheelMps_ / cachedLeverM_;
+  }
+}
+
+void TungLamDrive4WD::noteCommandReceived() {
+  lastCommandMs_ = millis();
+  commandTimedOut_ = false;
+}
+
+void TungLamDrive4WD::resetVelocityRampState() {
+  velocityRampPrimed_ = false;
+  lastVelocityUpdateMs_ = 0;
+  rampedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+}
+
+TungLamBodyVelocity TungLamDrive4WD::applyVelocityRamp(
+    const TungLamBodyVelocity& target,
+    uint32_t nowMs) {
+  if (!velocityRampEnabled_) {
+    return target;
+  }
+
+  if (!velocityRampPrimed_) {
+    velocityRampPrimed_ = true;
+    lastVelocityUpdateMs_ = nowMs;
+    rampedBodyVelocity_ = {0.0f, 0.0f, 0.0f};
+    return rampedBodyVelocity_;
+  }
+
+  uint32_t dtMs = (uint32_t)(nowMs - lastVelocityUpdateMs_);
+  lastVelocityUpdateMs_ = nowMs;
+
+  if (dtMs > 100UL) {
+    dtMs = 100UL;
+  }
+
+  const float dt = (float)dtMs * 0.001f;
+  const float linearDelta = linearAccelMps2_ * dt;
+  const float yawDelta = yawAccelRadps2_ * dt;
+
+  rampedBodyVelocity_.vxMps =
+      approachFloat(rampedBodyVelocity_.vxMps, target.vxMps, linearDelta);
+  rampedBodyVelocity_.vyMps =
+      approachFloat(rampedBodyVelocity_.vyMps, target.vyMps, linearDelta);
+  rampedBodyVelocity_.wzRadps =
+      approachFloat(rampedBodyVelocity_.wzRadps, target.wzRadps, yawDelta);
+
+  return rampedBodyVelocity_;
+}
+
+float TungLamDrive4WD::approachFloat(
+    float current,
+    float target,
+    float maxDelta) {
+  if (maxDelta <= 0.0f) {
+    return target;
+  }
+
+  const float delta = target - current;
+  if (delta > maxDelta) {
+    return current + maxDelta;
+  }
+  if (delta < -maxDelta) {
+    return current - maxDelta;
+  }
+  return target;
+}
+
 int16_t TungLamDrive4WD::wheelVelocityToPwm(float wheelMps) const {
-  const float maxMps = maxWheelLinearSpeedMps();
-  if (maxMps <= 0.0f || wheelMps == 0.0f) {
+  if (cachedPwmPerMps_ <= 0.0f || wheelMps == 0.0f) {
     return 0;
   }
 
-  float pwm = (wheelMps / maxMps) * 255.0f;
+  float pwm = wheelMps * cachedPwmPerMps_;
   if (pwm > 255.0f) pwm = 255.0f;
   if (pwm < -255.0f) pwm = -255.0f;
 
   return (int16_t)(pwm >= 0.0f ? pwm + 0.5f : pwm - 0.5f);
 }
 
-// Scale đồng đều toàn bộ vector nếu có bánh vượt tốc độ cho phép.
 TungLamWheelVelocity TungLamDrive4WD::limitWheelVelocities(
-    const TungLamWheelVelocity& wheels) const {
-  const float maxAvailable = maxWheelLinearSpeedMps();
+    const TungLamWheelVelocity& wheels,
+    float* scaleOut) const {
+  if (scaleOut != nullptr) {
+    *scaleOut = 1.0f;
+  }
+
+  const float maxAvailable = cachedMaxWheelMps_;
   if (maxAvailable <= 0.0f) {
+    if (scaleOut != nullptr) {
+      *scaleOut = 0.0f;
+    }
     return {0.0f, 0.0f, 0.0f, 0.0f};
   }
 
@@ -947,6 +1183,10 @@ TungLamWheelVelocity TungLamDrive4WD::limitWheelVelocities(
   }
 
   const float scale = maxAvailable / maxRequested;
+  if (scaleOut != nullptr) {
+    *scaleOut = scale;
+  }
+
   return {
       wheels.m1Mps * scale,
       wheels.m2Mps * scale,
@@ -955,7 +1195,6 @@ TungLamWheelVelocity TungLamDrive4WD::limitWheelVelocities(
   };
 }
 
-// Chuẩn hóa vector normalized về biên PWM 255 mà vẫn giữ tỷ lệ.
 TungLamDrive4WD::Wheels TungLamDrive4WD::normalize(int32_t m1,
                                                    int32_t m2,
                                                    int32_t m3,

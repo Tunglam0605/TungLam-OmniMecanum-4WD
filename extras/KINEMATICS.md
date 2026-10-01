@@ -596,3 +596,81 @@ hệ tọa độ
 ```
 
 Mục tiêu của thư viện là để cùng một nền tảng có thể dùng từ robot học sinh đến bài thực hành robotics ở bậc đại học.
+
+
+---
+
+# 19. Tối ưu control loop từ v0.10
+
+ATmega2560 không có FPU, nên phép chia số thực tốn nhiều chu kỳ hơn phép cộng/nhân.
+
+Từ v0.10, khi gọi:
+
+```cpp
+robot.setDriveConfig(model);
+```
+
+thư viện tính trước và cache:
+
+```text
+K = (wheelbase + trackWidth) / 2
+RPM ước lượng tại điện áp nguồn
+max wheel speed [m/s]
+PWM trên mỗi m/s
+max body speed
+max yaw rate
+```
+
+Vì vậy `driveVelocity()` không cần tính lại chuỗi chia số thực cho từng bánh ở mỗi vòng lặp.
+
+---
+
+# 20. Smart Safety
+
+Bật nhanh:
+
+```cpp
+robot.enableSmartSafety(500, 1.0f, 2.0f);
+```
+
+Trong đó:
+
+```text
+500 ms      = watchdog mất lệnh
+1.0 m/s²    = giới hạn thay đổi vx/vy
+2.0 rad/s²  = giới hạn thay đổi wz
+```
+
+Sau đó bắt buộc gọi:
+
+```cpp
+robot.update();
+```
+
+liên tục trong `loop()`.
+
+Nếu mất lệnh mới lâu hơn timeout trong khi robot đang chạy, watchdog đưa PWM về 0.
+
+Bộ ramp chỉ áp dụng cho `driveVelocity()`; API PWM trực tiếp vẫn phản hồi trực tiếp như trước.
+
+---
+
+# 21. Theo dõi saturation
+
+```cpp
+bool limited = robot.wasVelocityLimited();
+float scale = robot.lastVelocityScale();
+```
+
+`scale = 1.0` nghĩa là lệnh nằm trong khả năng model.
+
+`scale = 0.5` nghĩa là thư viện đã giảm đồng đều vector còn 50%.
+
+Có thể đọc thêm:
+
+```cpp
+TungLamBodyVelocity requested = robot.requestedBodyVelocity();
+TungLamBodyVelocity applied = robot.appliedBodyVelocity();
+```
+
+để tầng PID/ROS2 biết lệnh yêu cầu và lệnh ước lượng thực sự được áp.

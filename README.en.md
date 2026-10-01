@@ -434,6 +434,34 @@ TungLamBodyVelocity body =
 
 > ⚠️ **Important:** without wheel encoders, `driveVelocity()` is open-loop feed-forward. The RPM/voltage model estimates PWM; it cannot guarantee measured speed under load. `speedScale` exists for empirical calibration.
 
+## Smart Safety
+
+For beginner projects, enable watchdog and SI velocity smoothing once:
+
+```cpp
+robot.enableSmartSafety(500, 1.0f, 2.0f);
+```
+
+Then keep the loop simple:
+
+```cpp
+robot.update();
+robot.driveVelocity(vx, vy, wz);
+```
+
+The library handles command timeout, velocity ramping, inverse kinematics, proportional wheel-speed saturation, cached motor-model feed-forward, safe direction changes and PWM output.
+
+The expensive motor/geometry divisions are precomputed when `setDriveConfig()` or `setChassis()` is called instead of being repeated in each `driveVelocity()` iteration.
+
+Saturation telemetry is available through:
+
+```cpp
+robot.wasVelocityLimited();
+robot.lastVelocityScale();
+robot.requestedBodyVelocity();
+robot.appliedBodyVelocity();
+```
+
 This SI layer is intentionally ready for future control work:
 
 ```text
@@ -764,6 +792,7 @@ For most L298N + DC motor applications, start with **High7k8Hz**.
 | **OmniXDrive** | Modern Omni X-drive |
 | **PerWheelControl** | Direct signed M1..M4 control |
 | **MetricKinematics** | Motor/chassis config, SI m/s + rad/s, inverse/forward kinematics |
+| **StudentQuickStart** | Recommended beginner path: Smart Safety + SI velocity |
 | **ActiveBrake** | ABS / reverse braking |
 | **ActiveBrakeNonBlocking** | Non-blocking brake demonstration |
 | **LegacyV5DropIn** | Old V5 include/class compatibility |

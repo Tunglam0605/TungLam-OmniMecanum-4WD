@@ -655,3 +655,47 @@ coordinate frame
 ```
 
 That progression lets the same library serve both simple classroom robots and more advanced mobile-robot control experiments.
+
+
+---
+
+# 19. Control-loop optimization from v0.10
+
+ATmega2560 has no hardware FPU. The library therefore precomputes motor/chassis derived constants when `setDriveConfig()` or `setChassis()` is called.
+
+Cached values include the rotation lever arm, estimated motor RPM, maximum wheel speed, PWM-per-m/s scale, maximum body speed and maximum yaw rate.
+
+This keeps the frequent `driveVelocity()` path focused on additions, multiplications, comparisons and only the saturation division when a requested wheel vector actually exceeds the model.
+
+---
+
+# 20. Smart Safety
+
+```cpp
+robot.enableSmartSafety(500, 1.0f, 2.0f);
+```
+
+enables a 500 ms command watchdog plus SI velocity slew-rate limiting.
+
+Call:
+
+```cpp
+robot.update();
+```
+
+continuously in `loop()`.
+
+Velocity smoothing applies to `driveVelocity()`; direct PWM APIs keep immediate behavior for compatibility.
+
+---
+
+# 21. Saturation telemetry
+
+```cpp
+robot.wasVelocityLimited();
+robot.lastVelocityScale();
+robot.requestedBodyVelocity();
+robot.appliedBodyVelocity();
+```
+
+These helpers let higher-level PID/ROS2 code distinguish requested motion from the velocity vector that the open-loop drive layer could actually apply.
