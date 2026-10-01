@@ -43,6 +43,10 @@ This project started from the original **TungLam_Control_MotorV5** that was alre
 - ✅ **Mecanum-X** control
 - ✅ **Omni X-drive** control
 - ✅ Signed wheel control `-255 ... +255`
+- ✅ Standard right-handed body frame: `+X forward, +Y left, +Z/CCW yaw`
+- ✅ SI velocity API: `vx/vy` in m/s and `wz` in rad/s
+- ✅ Motor + chassis physical model: voltage, RPM, wheel radius, wheelbase, track width
+- ✅ Inverse + forward kinematics for Mecanum-X and canonical Omni-X
 - ✅ Hardware PWM using Timer3 + Timer4
 - ✅ High-frequency PWM around **7.8125 kHz**
 - ✅ Legacy PWM mode around **976.56 Hz**
@@ -144,11 +148,11 @@ Cartesian convention:
 +vx  = forward
 -vx  = backward
 
-+vy  = strafe right
--vy  = strafe left
++vy  = strafe left
+-vy  = strafe right
 
-+wz  = rotate clockwise / right
--wz  = rotate counter-clockwise / left
++wz  = rotate counter-clockwise / left
+-wz  = rotate clockwise / right
 ```
 
 ---
@@ -314,6 +318,8 @@ void loop() {
 
 ## Mecanum vector control
 
+> **v0.9 migration note:** the modern Cartesian signs are now standardized. In v0.8.x, positive `vy` meant right and positive `wz` meant clockwise. In v0.9+, positive `vy` means **left** and positive `wz` means **counter-clockwise**. Named helpers such as `strafeRight()` and `rotateRight()` keep their physical meaning.
+
 ```cpp
 robot.drive(vx, vy, wz);
 ```
@@ -321,10 +327,10 @@ robot.drive(vx, vy, wz);
 Example:
 
 ```cpp
-robot.drive(160, 0, 0);    // forward
-robot.drive(0, 160, 0);    // strafe right
-robot.drive(0, 0, 120);    // rotate right
-robot.drive(150, 100, 0);  // forward-right
+robot.drive(160, 0, 0);     // forward (+vx)
+robot.drive(0, 160, 0);     // strafe left (+vy)
+robot.drive(0, 0, 120);     // rotate left / CCW (+wz)
+robot.drive(150, -100, 0);  // forward-right (+vx, -vy)
 ```
 
 The modern Mecanum mixer is intentionally aligned with the proven V5 motion basis:
@@ -333,10 +339,10 @@ The modern Mecanum mixer is intentionally aligned with the proven V5 motion basi
 |---|---:|---:|---:|---:|
 | Forward | + | + | + | + |
 | Backward | - | - | - | - |
-| Strafe right | + | - | + | - |
-| Strafe left | - | + | - | + |
-| Rotate right | + | + | - | - |
-| Rotate left | - | - | + | + |
+| Strafe left (+vy) | - | + | - | + |
+| Strafe right (-vy) | + | - | + | - |
+| Rotate left / CCW (+wz) | - | - | + | + |
+| Rotate right / CW (-wz) | + | + | - | - |
 | Forward-right | + | 0 | + | 0 |
 | Forward-left | 0 | + | 0 | + |
 | Backward-right | 0 | - | 0 | - |
@@ -346,14 +352,116 @@ When a combined vector exceeds PWM 255, all wheels are scaled proportionally so 
 
 ---
 
+# 📐 SI kinematics and physical robot model
+
+For simple robots you can keep using PWM commands such as:
+
+```cpp
+robot.forward(150);
+robot.drive(150, 0, 0);
+```
+
+For robotics/controls work, v0.9 adds a physical model so the command can use **m/s** and **rad/s**.
+
+Declare the motor and chassis once:
+
+```cpp
+TungLamDriveConfig model(
+    12.0f,   // motor nominal voltage [V]
+    300.0f,  // gearbox/output no-load RPM at nominal voltage
+    12.0f,   // motor supply voltage [V]
+    0.050f,  // wheel radius [m]
+    0.320f,  // wheelbase: front-centre to rear-centre [m]
+    0.280f,  // track width: left-centre to right-centre [m]
+    0.85f    // empirical open-loop speed correction
+);
+
+robot.setDriveConfig(model);
+```
+
+Then command body velocity directly:
+
+```cpp
+robot.driveVelocity(
+    0.40f,  // vx [m/s] forward
+    0.10f,  // vy [m/s] left
+    0.50f   // wz [rad/s] CCW
+);
+```
+
+The library automatically performs:
+
+```text
+body velocity [vx, vy, wz]
+            ↓
+inverse kinematics
+            ↓
+wheel linear velocity [m/s]
+            ↓
+motor RPM / supply-voltage model
+            ↓
+proportional wheel-speed limiting
+            ↓
+open-loop PWM
+            ↓
+safe motor HAL
+```
+
+Useful calculated limits:
+
+```cpp
+robot.estimatedMotorRpmAtSupply();
+robot.maxWheelLinearSpeedMps();
+robot.maxBodyLinearSpeedMps();
+robot.maxYawRateRadps();
+```
+
+You can also study the mathematics directly:
+
+```cpp
+TungLamWheelVelocity wheels =
+    robot.inverseKinematics(vx, vy, wz);
+
+TungLamBodyVelocity body =
+    robot.forwardKinematics(wheels);
+```
+
+> ⚠️ **Important:** without wheel encoders, `driveVelocity()` is open-loop feed-forward. The RPM/voltage model estimates PWM; it cannot guarantee measured speed under load. `speedScale` exists for empirical calibration.
+
+This SI layer is intentionally ready for future control work:
+
+```text
+IMU heading PID
+      ↓
+wz correction [rad/s]
+      ↓
+driveVelocity(vx_mps, vy_mps, wz_radps)
+```
+
+and future encoder control:
+
+```text
+inverse kinematics
+      ↓
+wheel target speed
+      ↓
+wheel PID + encoder feedback
+      ↓
+PWM
+```
+
+See **[Kinematics, SI velocity, and open-loop motor model](extras/KINEMATICS.md)** for the equations and learning path.
+
+---
+
 ## Omni X-drive
 
 ```cpp
 robot.setChassis(TungLamChassis::OmniX);
 
-robot.drive(150, 0, 0);
-robot.drive(0, 150, 0);
-robot.drive(0, 0, 120);
+robot.drive(150, 0, 0);   // +vx forward
+robot.drive(0, 150, 0);   // +vy left
+robot.drive(0, 0, 120);   // +wz CCW
 ```
 
 Omni mechanical layouts vary more than Mecanum chassis. Always commission each wheel at low PWM first.
@@ -645,6 +753,7 @@ For most L298N + DC motor applications, start with **High7k8Hz**.
 | **MecanumDrive** | Modern Mecanum control |
 | **OmniXDrive** | Modern Omni X-drive |
 | **PerWheelControl** | Direct signed M1..M4 control |
+| **MetricKinematics** | Motor/chassis config, SI m/s + rad/s, inverse/forward kinematics |
 | **ActiveBrake** | ABS / reverse braking |
 | **ActiveBrakeNonBlocking** | Non-blocking brake demonstration |
 | **LegacyV5DropIn** | Old V5 include/class compatibility |
@@ -841,6 +950,7 @@ TungLam-OmniMecanum-4WD/
 # 📚 More documentation
 
 - **[Wiring and chassis conventions](extras/WIRING.md)**
+- **[Kinematics, SI velocity, and open-loop motor model](extras/KINEMATICS.md)**
 - **[Changelog](CHANGELOG.md)**
 - **[Examples](examples/)**
 

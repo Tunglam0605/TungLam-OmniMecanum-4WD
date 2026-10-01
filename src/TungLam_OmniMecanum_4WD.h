@@ -77,10 +77,10 @@
 
     +vx : tiến / forward
     -vx : lùi / backward
-    +vy : ngang phải / strafe right
-    -vy : ngang trái / strafe left
-    +wz : quay phải, chiều kim đồng hồ / clockwise
-    -wz : quay trái, ngược chiều kim đồng hồ / counter-clockwise
+    +vy : ngang trái / strafe left
+    -vy : ngang phải / strafe right
+    +wz : quay trái, ngược chiều kim đồng hồ / counter-clockwise
+    -wz : quay phải, chiều kim đồng hồ / clockwise
 
   Quy ước trên là thứ tự logic dùng bởi mixer Mecanum-X và Omni-X hiện đại.
   Với robot V5 cũ đã đấu dây và chạy ổn định, nên giữ nguyên wiring thực tế
@@ -400,8 +400,66 @@ enum class TungLamPwmMode : uint8_t {
  * @brief Selects the built-in holonomic mixer used by drive().
  */
 enum class TungLamChassis : uint8_t {
-  MecanumX = 0,  ///< TungLam/V5-compatible four-wheel Mecanum-X convention.
-  OmniX = 1      ///< Canonical four-wheel Omni X-drive layout.
+  MecanumX = 0,  ///< Four-wheel Mecanum-X using the documented M1..M4 order.
+  OmniX = 1      ///< Canonical four-wheel 45-degree Omni X-drive layout.
+};
+
+/**
+ * @struct TungLamDriveConfig
+ * @brief Physical parameters used by the SI-unit kinematics/open-loop model.
+ *
+ * @details
+ * motorNoLoadRpm is the gearbox/output-shaft no-load speed at
+ * motorNominalVoltageV. speedScale is an empirical correction factor for
+ * driver voltage drop, load, battery sag and other real-world losses.
+ *
+ * A value of 1.0f means ideal theoretical behavior. For open-loop operation
+ * this model estimates wheel speed; it does not measure actual speed.
+ */
+struct TungLamDriveConfig {
+  float motorNominalVoltageV;  ///< Rated voltage associated with motorNoLoadRpm.
+  float motorNoLoadRpm;        ///< No-load gearbox/output-shaft RPM at rated voltage.
+  float supplyVoltageV;        ///< Motor supply voltage applied to the H-bridge.
+  float wheelRadiusM;          ///< Effective wheel radius in metres.
+  float wheelbaseM;            ///< Front-to-rear wheel-centre distance in metres.
+  float trackWidthM;           ///< Left-to-right wheel-centre distance in metres.
+  float speedScale;            ///< Empirical speed correction; 1.0 = ideal model.
+
+  TungLamDriveConfig(float motorVoltageV = 0.0f,
+                     float noLoadRpm = 0.0f,
+                     float supplyV = 0.0f,
+                     float radiusM = 0.0f,
+                     float wheelbase = 0.0f,
+                     float trackWidth = 0.0f,
+                     float calibrationScale = 1.0f)
+      : motorNominalVoltageV(motorVoltageV),
+        motorNoLoadRpm(noLoadRpm),
+        supplyVoltageV(supplyV),
+        wheelRadiusM(radiusM),
+        wheelbaseM(wheelbase),
+        trackWidthM(trackWidth),
+        speedScale(calibrationScale) {}
+};
+
+/**
+ * @struct TungLamWheelVelocity
+ * @brief Signed wheel-perimeter linear velocities in metres per second.
+ */
+struct TungLamWheelVelocity {
+  float m1Mps;  ///< M1 front-left wheel-perimeter speed.
+  float m2Mps;  ///< M2 rear-left wheel-perimeter speed.
+  float m3Mps;  ///< M3 front-right wheel-perimeter speed.
+  float m4Mps;  ///< M4 rear-right wheel-perimeter speed.
+};
+
+/**
+ * @struct TungLamBodyVelocity
+ * @brief Robot body velocity in the standard right-handed mobile-robot frame.
+ */
+struct TungLamBodyVelocity {
+  float vxMps;    ///< +X forward, metres per second.
+  float vyMps;    ///< +Y left, metres per second.
+  float wzRadps;  ///< +Z yaw counter-clockwise, radians per second.
 };
 
 /**
@@ -409,10 +467,10 @@ enum class TungLamChassis : uint8_t {
  * @brief Modern four-wheel motor and holonomic-drive controller.
  *
  * @details
- * Coordinate convention:
- * - +vx = forward
- * - +vy = right
- * - +wz = clockwise
+ * Coordinate convention (right-handed body frame / ROS-style):
+ * - +X / +vx = forward
+ * - +Y / +vy = left
+ * - +Z / +wz = counter-clockwise yaw when viewed from above
  *
  * Raw wheel convention:
  * - positive value = logical forward for that wheel;
@@ -478,22 +536,91 @@ class TungLamDrive4WD {
   void setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4);
 
   /**
-   * @brief Drive using the currently selected chassis mixer.
-   * @param vx Forward/backward demand.
-   * @param vy Right/left translation demand.
-   * @param wz Clockwise/counter-clockwise rotation demand.
+   * @brief Drive using normalized body-frame commands and the selected mixer.
+   * @param vx +255 forward, -255 backward.
+   * @param vy +255 left, -255 right.
+   * @param wz +255 counter-clockwise, -255 clockwise.
+   *
+   * @note These are normalized command units, not SI velocity units. Use
+   * driveVelocity() for metres/second and radians/second.
    */
   void drive(int16_t vx, int16_t vy, int16_t wz);
 
   /**
+   * @brief Configure the physical model used by SI-unit kinematics.
+   * @return true when all required parameters are strictly positive.
+   *
+   * Invalid configurations are rejected and do not replace the previous model.
+   */
+  bool setDriveConfig(const TungLamDriveConfig& config);
+
+  /** @brief Return the currently stored physical drive configuration. */
+  const TungLamDriveConfig& driveConfig() const;
+
+  /** @brief Return true when a valid SI/open-loop drive model is configured. */
+  bool hasDriveConfig() const;
+
+  /**
+   * @brief Estimate motor output RPM available at the configured supply voltage.
+   *
+   * This is motorNoLoadRpm * supplyVoltage / nominalVoltage * speedScale.
+   */
+  float estimatedMotorRpmAtSupply() const;
+
+  /** @brief Estimated maximum wheel-perimeter speed in m/s. */
+  float maxWheelLinearSpeedMps() const;
+
+  /** @brief Estimated maximum pure +X/-X body speed in m/s for the selected chassis. */
+  float maxBodyLinearSpeedMps() const;
+
+  /** @brief Estimated maximum pure yaw rate in rad/s for the selected chassis. */
+  float maxYawRateRadps() const;
+
+  /**
+   * @brief Compute inverse kinematics without commanding the hardware.
+   * @param vxMps Body +X forward velocity in m/s.
+   * @param vyMps Body +Y left velocity in m/s.
+   * @param wzRadps Body +Z CCW yaw rate in rad/s.
+   * @return Signed wheel-perimeter speeds in m/s.
+   */
+  TungLamWheelVelocity inverseKinematics(float vxMps,
+                                         float vyMps,
+                                         float wzRadps) const;
+
+  /**
+   * @brief Compute forward kinematics from wheel-perimeter speeds.
+   *
+   * This helper is useful for teaching and is also the intended future bridge
+   * for encoder odometry. It does not read any sensors by itself.
+   */
+  TungLamBodyVelocity forwardKinematics(
+      const TungLamWheelVelocity& wheels) const;
+
+  /**
+   * @brief Command body velocity in SI units using open-loop feed-forward.
+   * @param vxMps +X forward velocity in m/s.
+   * @param vyMps +Y left velocity in m/s.
+   * @param wzRadps +Z CCW yaw rate in rad/s.
+   * @return false when no valid drive model is configured; otherwise true.
+   *
+   * Requested wheel speeds are proportionally scaled when they exceed the
+   * estimated available wheel speed, preserving the requested motion vector.
+   *
+   * @warning With no wheel encoders this is an estimate, not closed-loop speed
+   * control. Real velocity changes with load, battery, friction and L298N loss.
+   */
+  bool driveVelocity(float vxMps, float vyMps, float wzRadps);
+
+  /**
    * @brief Apply the TungLam/V5-compatible Mecanum-X mixer directly.
    *
-   * Basis vectors:
-   * - forward      = [+,+,+,+]
-   * - strafe right = [+,-,+,-]
-   * - rotate right = [+,+,-,-]
+   * Standard body-frame basis vectors:
+   * - +vx forward = [+,+,+,+]
+   * - +vy left    = [-,+,-,+]
+   * - +wz CCW     = [-,-,+,+]
    *
-   * This keeps modern vx/vy/wz motion consistent with proven V5 robot commands.
+   * These vectors preserve the proven V5 physical movement patterns while
+   * assigning the modern vx/vy/wz signs to the right-handed robot convention.
    */
 
   void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
@@ -507,16 +634,16 @@ class TungLamDrive4WD {
   /** @brief Convenience helper for pure backward motion. */
   void backward(uint8_t duty);
 
-  /** @brief Convenience helper for pure right translation. */
+  /** @brief Convenience helper for right translation (-vy). */
   void strafeRight(uint8_t duty);
 
-  /** @brief Convenience helper for pure left translation. */
+  /** @brief Convenience helper for left translation (+vy). */
   void strafeLeft(uint8_t duty);
 
-  /** @brief Convenience helper for pure clockwise/right rotation. */
+  /** @brief Convenience helper for clockwise/right rotation (-wz). */
   void rotateRight(uint8_t duty);
 
-  /** @brief Convenience helper for pure counter-clockwise/left rotation. */
+  /** @brief Convenience helper for counter-clockwise/left rotation (+wz). */
   void rotateLeft(uint8_t duty);
 
   /**
@@ -593,6 +720,8 @@ class TungLamDrive4WD {
 
   TungLamChassis chassis_;  ///< Mixer selected by drive().
   TungLamPwmMode pwmMode_;  ///< Hardware PWM mode selected by begin().
+  TungLamDriveConfig driveConfig_; ///< SI/open-loop physical drive model.
+  bool driveConfigValid_;   ///< True after a valid physical model is configured.
   bool inverted_[4];        ///< Per-wheel physical inversion flags.
   uint16_t deadTimeUs_;     ///< Direction-transition dead-time in microseconds.
 
@@ -634,6 +763,16 @@ class TungLamDrive4WD {
 
   // Detect an actual non-zero sign reversal on any wheel.
   static bool directionChanged(const Wheels& a, const Wheels& b);
+
+  // Validate positive physical-model parameters.
+  static bool driveConfigIsValid(const TungLamDriveConfig& config);
+
+  // Convert one signed wheel-perimeter velocity to signed PWM feed-forward.
+  int16_t wheelVelocityToPwm(float wheelMps) const;
+
+  // Proportionally scale a metric wheel vector to the available wheel speed.
+  TungLamWheelVelocity limitWheelVelocities(
+      const TungLamWheelVelocity& wheels) const;
 
   // Proportionally scale a four-wheel vector when any magnitude exceeds 255.
   static Wheels normalize(int32_t m1, int32_t m2, int32_t m3, int32_t m4);

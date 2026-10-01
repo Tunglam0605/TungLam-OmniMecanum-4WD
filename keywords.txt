@@ -57,3 +57,16 @@ L_Trai	KEYWORD2
 L_Phai	KEYWORD2
 N_Trai	KEYWORD2
 N_Phai	KEYWORD2
+TungLamDriveConfig	KEYWORD1
+TungLamWheelVelocity	KEYWORD1
+TungLamBodyVelocity	KEYWORD1
+setDriveConfig	KEYWORD2
+driveConfig	KEYWORD2
+hasDriveConfig	KEYWORD2
+estimatedMotorRpmAtSupply	KEYWORD2
+maxWheelLinearSpeedMps	KEYWORD2
+maxBodyLinearSpeedMps	KEYWORD2
+maxYawRateRadps	KEYWORD2
+inverseKinematics	KEYWORD2
+forwardKinematics	KEYWORD2
+driveVelocity	KEYWORD2

@@ -4,8 +4,8 @@
  *
  * Coordinate convention:
  * - +vx = forward
- * - +vy = right
- * - +wz = clockwise/right rotation
+ * - +vy = left
+ * - +wz = counter-clockwise/left rotation
  *
  * Omni mechanical layouts vary, so verify M1..M4 using FirstMotorTest before
  * relying on combined X-drive motion.
@@ -29,11 +29,12 @@ void loop() {
   // Optional high-level state synchronization after a hardware-timed brake pulse.
   robot.update();
 
-  // Command combined forward and right translation with no rotation:
+  // Command combined forward and left translation with no rotation:
   // vx=140 -> forward component
-  // vy=80  -> right component
+  // vy=80  -> left component (+Y)
   // wz=0   -> no rotational component
   robot.drive(140, 80, 0);
 
-  // The mixer normalizes all four wheel outputs proportionally if required.
+  // The normalized Omni-X mixer follows the documented canonical 45-degree
+  // wheel-axis model. For physical SI commands use driveVelocity().
 }
