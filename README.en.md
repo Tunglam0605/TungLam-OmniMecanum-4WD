@@ -778,6 +778,25 @@ For most L298N + DC motor applications, start with **High7k8Hz**.
 
 ---
 
+# 💡 Autocomplete-friendly parameter names
+
+Arduino IDE's suggestion list renders function names and signatures, while longer documentation is normally shown through hover or parameter hints.
+
+From v0.10.1, public parameter names are intentionally descriptive so the signature itself is useful while typing. Examples:
+
+```text
+setChassis(TungLamChassis kieuDe)
+setDriveConfig(const TungLamDriveConfig& thongSoRobot)
+setMotorInverted(uint8_t soBanh, bool daoChieu)
+driveVelocity(float vxTienMps, float vyTraiMps, float wzQuayTraiRadps)
+setCommandTimeoutMs(uint16_t thoiGianMatLenhMs)
+ABS(uint8_t doManhHam)
+```
+
+The identifiers use ASCII Vietnamese-style names for AVR/C++ toolchain compatibility. Full Vietnamese documentation with accents remains available through hover.
+
+---
+
 # 🧩 Examples included
 
 

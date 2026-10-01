@@ -179,75 +179,102 @@ Sau đó chọn phiên bản mới nhất và nhấn **Install**.
 
 # 💡 Gợi ý hàm bằng tiếng Việt trong Arduino IDE
 
-Thư viện được viết để học sinh có thể **gõ code và học ngay từ phần gợi ý của IDE**.
+Thư viện được tối ưu cho hai mức gợi ý khác nhau của Arduino IDE 2.x:
 
-Với Arduino IDE 2.x, sau khi tạo:
+### 1. Ngay trong lúc đang gõ
+
+Sau khi tạo:
 
 ```cpp
 TungLamDrive4WD robot;
 ```
 
-hãy thử gõ:
+gõ:
 
 ```cpp
 robot.
 ```
 
-IDE sẽ gợi ý các hàm public như:
+Arduino IDE sẽ hiện tên hàm và **signature**. Từ v0.10.1, tên tham số public được viết theo kiểu tiếng Việt không dấu để học sinh hiểu ngay chức năng trong popup autocomplete:
 
 ```text
-forward(...)
-backward(...)
-drive(...)
-driveVelocity(...)
-setWheels(...)
-ABS(...)
-inverseKinematics(...)
-...
+setChassis(TungLamChassis kieuDe)
+
+setCommandTimeoutMs(
+    uint16_t thoiGianMatLenhMs
+)
+
+setDriveConfig(
+    const TungLamDriveConfig& thongSoRobot
+)
+
+setMotorInverted(
+    uint8_t soBanh,
+    bool daoChieu
+)
+
+driveVelocity(
+    float vxTienMps,
+    float vyTraiMps,
+    float wzQuayTraiRadps
+)
+
+setVelocityRamp(
+    float gioiHanGiaTocTinhTienMps2,
+    float gioiHanGiaTocQuayRadps2
+)
+
+ABS(uint8_t doManhHam)
 ```
 
-Các hàm trong header chính đều có **Doxygen comment tiếng Việt** ngay trước declaration. Khi chọn hàm, xem signature help hoặc hover lên tên hàm, bạn có thể thấy mô tả kiểu:
+Cách đọc trực tiếp:
+
+```text
+vxTienMps          = vận tốc tiến/lùi [m/s]
+vyTraiMps          = vận tốc ngang, dương sang trái [m/s]
+wzQuayTraiRadps    = tốc độ quay, dương quay trái/CCW [rad/s]
+
+soBanh             = số bánh 1..4
+daoChieu            = true nếu cần đảo chiều motor
+thongSoRobot        = cấu hình motor + kích thước đế
+thoiGianMatLenhMs   = watchdog timeout
+doManhHam           = duty hãm ABS
+```
+
+Tên tham số không có dấu để giữ tương thích tốt với toolchain C++/AVR, còn phần giải thích đầy đủ vẫn dùng tiếng Việt có dấu.
+
+### 2. Sau khi chọn hàm hoặc hover
+
+Mỗi public API vẫn có documentation comment tiếng Việt đầy đủ ngay trong header.
+
+Ví dụ:
 
 ```cpp
 robot.driveVelocity(0.40f, 0.10f, 0.50f);
 ```
 
-Ý nghĩa được ghi ngay trong API:
+Hover vào `driveVelocity` sẽ giải thích:
 
 ```text
-vxMps   : vận tốc X [m/s], dương = tiến
-vyMps   : vận tốc Y [m/s], dương = trái
-wzRadps : tốc độ quay Z [rad/s], dương = CCW/trái
+vxTienMps       : vận tốc X [m/s], dương = tiến
+vyTraiMps       : vận tốc Y [m/s], dương = trái
+wzQuayTraiRadps : tốc độ quay Z [rad/s], dương = CCW/trái
 
 Nếu yêu cầu vượt khả năng model:
 → thư viện tự scale tốc độ 4 bánh để giữ tỷ lệ động học.
 ```
 
-Ví dụ với:
-
-```cpp
-robot.setMotorInverted(3, true);
-```
-
-IDE có thể đọc từ header:
+Khi con trỏ đang ở bên trong dấu ngoặc của một hàm, Arduino IDE cũng có thể hiện **Parameter Hints**. Có thể gọi thủ công bằng:
 
 ```text
-Đảo chiều logic riêng một motor mà không sửa phương trình động học.
-
-wheel:
-1 = M1 trước-trái
-2 = M2 sau-trái
-3 = M3 trước-phải
-4 = M4 sau-phải
-
-inverted:
-true  = đảo chiều
-false = chiều mặc định
+Ctrl + Shift + Space
 ```
 
-> `keywords.txt` chủ yếu dùng cho tô màu cú pháp. Phần giải thích hàm/parameter được đặt trong Doxygen comment của `src/TungLam_OmniMecanum_4WD.h` để Arduino Language Server có thể đọc khi code completion/hover.
+nếu cần xem lại signature trong lúc đang nhập tham số.
 
-Nếu vừa cập nhật thư viện nhưng IDE chưa hiện mô tả mới, hãy đóng/mở lại sketch hoặc khởi động lại Arduino IDE để language server index lại header.
+> Arduino IDE quyết định giao diện của dropdown autocomplete, nên library không thể ép một đoạn mô tả dài xuất hiện ngay bên cạnh từng tên hàm. v0.10.1 dùng tên tham số có nghĩa để đưa thông tin quan trọng nhất vào chính signature mà IDE đang hiển thị.
+
+Nếu vừa cập nhật thư viện nhưng IDE vẫn hiện signature cũ, hãy đóng/mở lại sketch hoặc khởi động lại Arduino IDE để language server index lại header.
 
 ---
 

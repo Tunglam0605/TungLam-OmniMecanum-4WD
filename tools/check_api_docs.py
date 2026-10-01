@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kiểm tra public API có đủ gợi ý Doxygen tiếng Việt cho Arduino IDE."""
+"""Kiểm tra public API có đủ gợi ý tiếng Việt và @param khớp autocomplete."""
 
 from pathlib import Path
 import re
@@ -17,7 +17,7 @@ def class_public_block(text: str, class_name: str) -> str:
     return body.split("public:", 1)[1].split("private:", 1)[0]
 
 
-def declarations(block: str, class_name: str):
+def declarations(block: str):
     pattern = re.compile(
         r"(?m)^\s*(?:[A-Za-z_][A-Za-z0-9_:<>&]*\s+)*"
         r"[A-Za-z_][A-Za-z0-9_]*\s*\([^;{}]*\)\s*(?:const)?\s*;"
@@ -33,6 +33,20 @@ def declarations(block: str, class_name: str):
         yield decl, comment
 
 
+def parameter_names(decl: str):
+    args = decl[decl.find("(") + 1 : decl.rfind(")")].strip()
+    if not args or args == "void":
+        return []
+
+    names = []
+    for raw in args.split(","):
+        raw = raw.split("=", 1)[0].strip()
+        m = re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*$", raw)
+        if m:
+            names.append(m.group(1))
+    return names
+
+
 def main() -> int:
     text = HEADER.read_text(encoding="utf-8-sig")
     errors = []
@@ -42,16 +56,23 @@ def main() -> int:
         block = class_public_block(text, class_name)
         count = 0
 
-        for decl, comment in declarations(block, class_name):
+        for decl, comment in declarations(block):
             total += 1
             count += 1
 
             if "@brief" not in comment:
                 errors.append(f"{class_name}: thiếu @brief: {decl}")
 
-            args = decl[decl.find("(") + 1 : decl.rfind(")")].strip()
-            if args and args != "void" and "@param" not in comment:
-                errors.append(f"{class_name}: thiếu @param: {decl}")
+            params = parameter_names(decl)
+            documented = set(
+                re.findall(r"@param\s+([A-Za-z_][A-Za-z0-9_]*)", comment)
+            )
+
+            for name in params:
+                if name not in documented:
+                    errors.append(
+                        f"{class_name}: thiếu @param khớp '{name}': {decl}"
+                    )
 
             is_constructor = decl.startswith(class_name + "(")
             returns_void = decl.startswith("void ")

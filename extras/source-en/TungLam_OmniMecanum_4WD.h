@@ -213,21 +213,21 @@ class TungLam_Control_MotorV5 {
 
   /**
    * @brief Configure legacy auxiliary Timer1 PWM outputs on D11/D12.
-   * @param duty11 Initial PWM duty for D11 / OC1A, range 0..255.
-   * @param duty12 Initial PWM duty for D12 / OC1B, range 0..255.
+   * @param pwmD11 Initial PWM duty for D11 / OC1A, range 0..255.
+   * @param pwmD12 Initial PWM duty for D12 / OC1B, range 0..255.
    *
    * @warning This function takes ownership of Timer1.
    */
-  void Init_Timer1(uint8_t duty11, uint8_t duty12);
+  void Init_Timer1(uint8_t pwmD11, uint8_t pwmD12);
 
   /**
    * @brief Configure legacy auxiliary Timer2 PWM outputs on D9/D10.
-   * @param duty9  Initial PWM duty for D9, range 0..255.
-   * @param duty10 Initial PWM duty for D10, range 0..255.
+   * @param pwmD9  Initial PWM duty for D9, range 0..255.
+   * @param pwmD10 Initial PWM duty for D10, range 0..255.
    *
    * @warning This function takes ownership of Timer2.
    */
-  void Init_Timer2(uint8_t duty9, uint8_t duty10);
+  void Init_Timer2(uint8_t pwmD9, uint8_t pwmD10);
 
   /**
    * @brief Stop all four drive motors and clear legacy motion/ABS state.
@@ -237,38 +237,38 @@ class TungLam_Control_MotorV5 {
   void STOP();
 
   /** @brief Drive straight forward with one common PWM duty. */
-  void moveForward(uint8_t duty);
+  void moveForward(uint8_t pwm);
 
   /** @brief Drive straight backward with one common PWM duty. */
-  void moveBackward(uint8_t duty);
+  void moveBackward(uint8_t pwm);
 
   /** @brief Drive diagonally forward-right using the active diagonal wheel pair. */
-  void Forward_Right(uint8_t duty);
+  void Forward_Right(uint8_t pwm);
 
   /** @brief Drive diagonally backward-right using the active diagonal wheel pair. */
-  void Backward_Right(uint8_t duty);
+  void Backward_Right(uint8_t pwm);
 
   /** @brief Rotate the chassis clockwise/right in place. */
-  void moveRight(uint8_t duty);
+  void moveRight(uint8_t pwm);
 
   /** @brief Rotate the chassis counter-clockwise/left in place. */
-  void moveLeft(uint8_t duty);
+  void moveLeft(uint8_t pwm);
 
   /** @brief Translate the chassis sideways to the left. */
-  void moveLeftSide(uint8_t duty);
+  void moveLeftSide(uint8_t pwm);
 
   /** @brief Translate the chassis sideways to the right. */
-  void moveRightSide(uint8_t duty);
+  void moveRightSide(uint8_t pwm);
 
   /** @brief Drive diagonally forward-left using the active diagonal wheel pair. */
-  void Forward_Left(uint8_t duty);
+  void Forward_Left(uint8_t pwm);
 
   /** @brief Drive diagonally backward-left using the active diagonal wheel pair. */
-  void Backward_Left(uint8_t duty);
+  void Backward_Left(uint8_t pwm);
 
   /**
    * @brief Apply a strong active reverse-brake pulse without blocking the sketch.
-   * @param duty Reverse-brake PWM selected directly by the user, range 0..255.
+   * @param doManhHam Reverse-brake PWM selected directly by the user, range 0..255.
    *
    * @details
    * The function:
@@ -282,17 +282,17 @@ class TungLam_Control_MotorV5 {
    *
    * No robot.update() call is required for this legacy class.
    */
-  void ABS(uint8_t duty);
+  void ABS(uint8_t doManhHam);
 
   /**
    * @brief Set one wheel direction directly using the original V5 convention.
-   * @param BanhNumber Wheel index: 1..4.
-   * @param Set Direction flag used by the historical V5 wiring convention.
+   * @param soBanh Wheel index: 1..4.
+   * @param chieu Direction flag used by the historical V5 wiring convention.
    *
    * @note Invalid wheel numbers are ignored.
    * @note A new direction command cancels a pending legacy ABS pulse first.
    */
-  void Dir(uint8_t BanhNumber, bool Set);
+  void Dir(uint8_t soBanh, bool chieu);
 
   // --------------------------------------------------------------------------
   // Legacy independent-per-wheel movement API.
@@ -303,83 +303,83 @@ class TungLam_Control_MotorV5 {
   // --------------------------------------------------------------------------
 
   /** @brief Forward motion with independent PWM for M1..M4. */
-  void Tien(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Tien(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /** @brief Backward motion with independent PWM for M1..M4. */
-  void Lui(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Lui(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /** @brief Rotate left with independent PWM for M1..M4. */
-  void Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /** @brief Rotate right with independent PWM for M1..M4. */
-  void Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Forward-left diagonal with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void T_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void T_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Forward-right diagonal with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void T_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void T_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Backward-left diagonal with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void L_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void L_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Backward-right diagonal with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void L_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void L_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Translate left with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void N_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void N_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
   /**
    * @brief Translate right with independent PWM values for M1..M4.
-   * @param duty1 PWM for M1 front-left, 0..255.
-   * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param pwmM1 PWM for M1 front-left, 0..255.
+   * @param pwmM2 PWM for M2 rear-left, 0..255.
+   * @param pwmM3 PWM for M3 front-right, 0..255.
+   * @param pwmM4 PWM for M4 rear-right, 0..255.
    */
-  void N_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void N_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Configure the six legacy reverse-brake time ranges.
    *
-   * @param t500       Brake pulse in ms when movement duration is < 500 ms.
-   * @param t1000      Brake pulse in ms when movement duration is < 1000 ms.
-   * @param t1500      Brake pulse in ms when movement duration is < 1500 ms.
-   * @param t2000      Brake pulse in ms when movement duration is < 2000 ms.
-   * @param t3000      Brake pulse in ms when movement duration is < 3000 ms.
-   * @param tAbove3000 Brake pulse in ms when movement duration is >= 3000 ms.
+   * @param hamKhiChayDuoi500Ms       Brake pulse in ms when movement duration is < 500 ms.
+   * @param hamKhiChayDuoi1000Ms      Brake pulse in ms when movement duration is < 1000 ms.
+   * @param hamKhiChayDuoi1500Ms      Brake pulse in ms when movement duration is < 1500 ms.
+   * @param hamKhiChayDuoi2000Ms      Brake pulse in ms when movement duration is < 2000 ms.
+   * @param hamKhiChayDuoi3000Ms      Brake pulse in ms when movement duration is < 3000 ms.
+   * @param hamKhiChayTu3000Ms Brake pulse in ms when movement duration is >= 3000 ms.
    *
    * Default table: 45, 65, 70, 75, 80, 85 ms.
    */
-  void setTimABS(uint8_t t500,
-                 uint8_t t1000,
-                 uint8_t t1500,
-                 uint8_t t2000,
-                 uint8_t t3000,
-                 uint8_t tAbove3000);
+  void setTimABS(uint8_t hamKhiChayDuoi500Ms,
+                 uint8_t hamKhiChayDuoi1000Ms,
+                 uint8_t hamKhiChayDuoi1500Ms,
+                 uint8_t hamKhiChayDuoi2000Ms,
+                 uint8_t hamKhiChayDuoi3000Ms,
+                 uint8_t hamKhiChayTu3000Ms);
 
  private:
   // Reset one AVR timer register set before reconfiguration.
@@ -455,20 +455,20 @@ struct TungLamDriveConfig {
   float trackWidthM;           ///< Left-to-right wheel-centre distance in metres.
   float speedScale;            ///< Empirical speed correction; 1.0 = ideal model.
 
-  TungLamDriveConfig(float motorVoltageV = 0.0f,
-                     float noLoadRpm = 0.0f,
-                     float supplyV = 0.0f,
-                     float radiusM = 0.0f,
-                     float wheelbase = 0.0f,
-                     float trackWidth = 0.0f,
-                     float calibrationScale = 1.0f)
-      : motorNominalVoltageV(motorVoltageV),
-        motorNoLoadRpm(noLoadRpm),
-        supplyVoltageV(supplyV),
-        wheelRadiusM(radiusM),
-        wheelbaseM(wheelbase),
-        trackWidthM(trackWidth),
-        speedScale(calibrationScale) {}
+  TungLamDriveConfig(float dienApMotorV = 0.0f,
+                     float tocDoKhongTaiRpm = 0.0f,
+                     float dienApNguonV = 0.0f,
+                     float banKinhBanhM = 0.0f,
+                     float chieuDaiTamBanhM = 0.0f,
+                     float chieuRongTamBanhM = 0.0f,
+                     float heSoHieuChinh = 1.0f)
+      : motorNominalVoltageV(dienApMotorV),
+        motorNoLoadRpm(tocDoKhongTaiRpm),
+        supplyVoltageV(dienApNguonV),
+        wheelRadiusM(banKinhBanhM),
+        wheelbaseM(chieuDaiTamBanhM),
+        trackWidthM(chieuRongTamBanhM),
+        speedScale(heSoHieuChinh) {}
 };
 
 /**
@@ -517,11 +517,11 @@ class TungLamDrive4WD {
 
   /**
    * @brief Configure GPIO and Timer3/Timer4 for the four drive motors.
-   * @param pwmMode Desired drive PWM frequency.
+   * @param cheDoPWM Desired drive PWM frequency.
    *
    * @note Call once from setup() before issuing motion commands.
    */
-  void begin(TungLamPwmMode pwmMode = TungLamPwmMode::High7k8Hz);
+  void begin(TungLamPwmMode cheDoPWM = TungLamPwmMode::High7k8Hz);
 
   /**
    * @brief Synchronize modern software state after a hardware-timed brake pulse.
@@ -534,47 +534,47 @@ class TungLamDrive4WD {
   void update();
 
   /** @brief Select the mixer used by drive(). */
-  void setChassis(TungLamChassis chassis);
+  void setChassis(TungLamChassis kieuDe);
 
   /** @brief Return the currently selected chassis mixer. */
   TungLamChassis chassis() const;
 
   /**
    * @brief Invert one motor in the low-level physical layer.
-   * @param wheel Wheel number 1..4.
-   * @param inverted true to reverse the logical sign of that wheel.
+   * @param soBanh Wheel number 1..4.
+   * @param daoChieu true to reverse the logical sign of that wheel.
    *
    * @note Invalid wheel numbers are ignored.
    */
-  void setMotorInverted(uint8_t wheel, bool inverted);
+  void setMotorInverted(uint8_t soBanh, bool daoChieu);
 
   /**
    * @brief Set dead-time inserted before an electrical direction transition.
-   * @param deadTimeUs Dead-time in microseconds; 0 disables the delay.
+   * @param thoiGianChetUs Dead-time in microseconds; 0 disables the delay.
    */
-  void setDirectionDeadTimeUs(uint16_t deadTimeUs);
+  void setDirectionDeadTimeUs(uint16_t thoiGianChetUs);
 
   /**
    * @brief Command all four wheels directly.
-   * @param m1 Signed M1 demand, clamped to -255..255.
-   * @param m2 Signed M2 demand, clamped to -255..255.
-   * @param m3 Signed M3 demand, clamped to -255..255.
-   * @param m4 Signed M4 demand, clamped to -255..255.
+   * @param lenhM1 Signed M1 demand, clamped to -255..255.
+   * @param lenhM2 Signed M2 demand, clamped to -255..255.
+   * @param lenhM3 Signed M3 demand, clamped to -255..255.
+   * @param lenhM4 Signed M4 demand, clamped to -255..255.
    *
    * This is the lowest public motion layer and bypasses chassis mixing.
    */
-  void setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4);
+  void setWheels(int16_t lenhM1, int16_t lenhM2, int16_t lenhM3, int16_t lenhM4);
 
   /**
    * @brief Drive using normalized body-frame commands and the selected mixer.
-   * @param vx +255 forward, -255 backward.
-   * @param vy +255 left, -255 right.
-   * @param wz +255 counter-clockwise, -255 clockwise.
+   * @param vxTien +255 forward, -255 backward.
+   * @param vyTrai +255 left, -255 right.
+   * @param wzQuayTrai +255 counter-clockwise, -255 clockwise.
    *
    * @note These are normalized command units, not SI velocity units. Use
    * driveVelocity() for metres/second and radians/second.
    */
-  void drive(int16_t vx, int16_t vy, int16_t wz);
+  void drive(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /**
    * @brief Configure the physical model used by SI-unit kinematics.
@@ -582,7 +582,7 @@ class TungLamDrive4WD {
    *
    * Invalid configurations are rejected and do not replace the previous model.
    */
-  bool setDriveConfig(const TungLamDriveConfig& config);
+  bool setDriveConfig(const TungLamDriveConfig& thongSoRobot);
 
   /** @brief Return the currently stored physical drive configuration. */
   const TungLamDriveConfig& driveConfig() const;
@@ -608,14 +608,14 @@ class TungLamDrive4WD {
 
   /**
    * @brief Compute inverse kinematics without commanding the hardware.
-   * @param vxMps Body +X forward velocity in m/s.
-   * @param vyMps Body +Y left velocity in m/s.
-   * @param wzRadps Body +Z CCW yaw rate in rad/s.
+   * @param vxTienMps Body +X forward velocity in m/s.
+   * @param vyTraiMps Body +Y left velocity in m/s.
+   * @param wzQuayTraiRadps Body +Z CCW yaw rate in rad/s.
    * @return Signed wheel-perimeter speeds in m/s.
    */
-  TungLamWheelVelocity inverseKinematics(float vxMps,
-                                         float vyMps,
-                                         float wzRadps) const;
+  TungLamWheelVelocity inverseKinematics(float vxTienMps,
+                                         float vyTraiMps,
+                                         float wzQuayTraiRadps) const;
 
   /**
    * @brief Compute forward kinematics from wheel-perimeter speeds.
@@ -624,13 +624,13 @@ class TungLamDrive4WD {
    * for encoder odometry. It does not read any sensors by itself.
    */
   TungLamBodyVelocity forwardKinematics(
-      const TungLamWheelVelocity& wheels) const;
+      const TungLamWheelVelocity& tocDoBanh) const;
 
   /**
    * @brief Command body velocity in SI units using open-loop feed-forward.
-   * @param vxMps +X forward velocity in m/s.
-   * @param vyMps +Y left velocity in m/s.
-   * @param wzRadps +Z CCW yaw rate in rad/s.
+   * @param vxTienMps +X forward velocity in m/s.
+   * @param vyTraiMps +Y left velocity in m/s.
+   * @param wzQuayTraiRadps +Z CCW yaw rate in rad/s.
    * @return false when no valid drive model is configured; otherwise true.
    *
    * Requested wheel speeds are proportionally scaled when they exceed the
@@ -639,34 +639,34 @@ class TungLamDrive4WD {
    * @warning With no wheel encoders this is an estimate, not closed-loop speed
    * control. Real velocity changes with load, battery, friction and L298N loss.
    */
-  bool driveVelocity(float vxMps, float vyMps, float wzRadps);
+  bool driveVelocity(float vxTienMps, float vyTraiMps, float wzQuayTraiRadps);
 
   /**
    * @brief Enable command watchdog and SI velocity smoothing with one call.
-   * @param timeoutMs Command timeout [ms]; 0 disables watchdog.
-   * @param linearAccelMps2 Maximum vx/vy slew rate [m/s^2]; <=0 disables smoothing.
-   * @param yawAccelRadps2 Maximum wz slew rate [rad/s^2]; <=0 disables smoothing.
+   * @param thoiGianMatLenhMs Command timeout [ms]; 0 disables watchdog.
+   * @param gioiHanGiaTocTinhTienMps2 Maximum vx/vy slew rate [m/s^2]; <=0 disables smoothing.
+   * @param gioiHanGiaTocQuayRadps2 Maximum wz slew rate [rad/s^2]; <=0 disables smoothing.
    */
-  void enableSmartSafety(uint16_t timeoutMs = 500,
-                         float linearAccelMps2 = 1.0f,
-                         float yawAccelRadps2 = 2.0f);
+  void enableSmartSafety(uint16_t thoiGianMatLenhMs = 500,
+                         float gioiHanGiaTocTinhTienMps2 = 1.0f,
+                         float gioiHanGiaTocQuayRadps2 = 2.0f);
 
   /** @brief Disable watchdog and SI velocity smoothing. */
   void disableSmartSafety();
 
-  /** @brief Configure command-loss watchdog. @param timeoutMs Timeout [ms]; 0 disables it. */
-  void setCommandTimeoutMs(uint16_t timeoutMs);
+  /** @brief Configure command-loss watchdog. @param thoiGianMatLenhMs Timeout [ms]; 0 disables it. */
+  void setCommandTimeoutMs(uint16_t thoiGianMatLenhMs);
 
   /** @brief Return true if watchdog stopped the robot after command loss. */
   bool commandTimedOut() const;
 
   /**
    * @brief Enable SI body-velocity slew-rate limiting.
-   * @param linearAccelMps2 Maximum vx/vy slew rate [m/s^2].
-   * @param yawAccelRadps2 Maximum wz slew rate [rad/s^2].
+   * @param gioiHanGiaTocTinhTienMps2 Maximum vx/vy slew rate [m/s^2].
+   * @param gioiHanGiaTocQuayRadps2 Maximum wz slew rate [rad/s^2].
    * @return true for valid positive limits; false disables the ramp.
    */
-  bool setVelocityRamp(float linearAccelMps2, float yawAccelRadps2);
+  bool setVelocityRamp(float gioiHanGiaTocTinhTienMps2, float gioiHanGiaTocQuayRadps2);
 
   /** @brief Disable SI velocity slew-rate limiting. */
   void disableVelocityRamp();
@@ -695,28 +695,28 @@ class TungLamDrive4WD {
    * assigning the modern vx/vy/wz signs to the right-handed robot convention.
    */
 
-  void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
+  void driveMecanum(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /** @brief Apply the canonical four-wheel Omni-X mixer directly. */
-  void driveOmniX(int16_t vx, int16_t vy, int16_t wz);
+  void driveOmniX(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /** @brief Convenience helper for pure forward motion. */
-  void forward(uint8_t duty);
+  void forward(uint8_t pwm);
 
   /** @brief Convenience helper for pure backward motion. */
-  void backward(uint8_t duty);
+  void backward(uint8_t pwm);
 
   /** @brief Convenience helper for right translation (-vy). */
-  void strafeRight(uint8_t duty);
+  void strafeRight(uint8_t pwm);
 
   /** @brief Convenience helper for left translation (+vy). */
-  void strafeLeft(uint8_t duty);
+  void strafeLeft(uint8_t pwm);
 
   /** @brief Convenience helper for clockwise/right rotation (-wz). */
-  void rotateRight(uint8_t duty);
+  void rotateRight(uint8_t pwm);
 
   /** @brief Convenience helper for counter-clockwise/left rotation (+wz). */
-  void rotateLeft(uint8_t duty);
+  void rotateLeft(uint8_t pwm);
 
   /**
    * @brief Coast-stop all four motors.
@@ -738,7 +738,7 @@ class TungLamDrive4WD {
 
   /**
    * @brief Start a user-controlled active reverse-brake pulse.
-   * @param brakeDuty Reverse-brake PWM selected directly by the user, 0..255.
+   * @param doManhHam Reverse-brake PWM selected directly by the user, 0..255.
    *
    * @details
    * The previous signed wheel directions are captured and each moving wheel is
@@ -747,10 +747,10 @@ class TungLamDrive4WD {
    *
    * @warning This is intentionally a strong plug/reverse-braking mechanism.
    */
-  void ABS(uint8_t brakeDuty);
+  void ABS(uint8_t doManhHam);
 
   /** @brief Descriptive alias of ABS(brakeDuty). */
-  void activeBrake(uint8_t brakeDuty);
+  void activeBrake(uint8_t doManhHam);
 
   /** @brief Return true while the modern active-brake pulse is in progress. */
   bool isBraking() const;
@@ -763,20 +763,20 @@ class TungLamDrive4WD {
    *
    * Parameters have the same meaning/default model as legacy setTimABS().
    */
-  void setTimABS(uint8_t t500,
-                 uint8_t t1000,
-                 uint8_t t1500,
-                 uint8_t t2000,
-                 uint8_t t3000,
-                 uint8_t tAbove3000);
+  void setTimABS(uint8_t hamKhiChayDuoi500Ms,
+                 uint8_t hamKhiChayDuoi1000Ms,
+                 uint8_t hamKhiChayDuoi1500Ms,
+                 uint8_t hamKhiChayDuoi2000Ms,
+                 uint8_t hamKhiChayDuoi3000Ms,
+                 uint8_t hamKhiChayTu3000Ms);
 
   /** @brief Descriptive alias of setTimABS(). */
-  void setBrakeTimings(uint8_t t500,
-                       uint8_t t1000,
-                       uint8_t t1500,
-                       uint8_t t2000,
-                       uint8_t t3000,
-                       uint8_t tAbove3000);
+  void setBrakeTimings(uint8_t hamKhiChayDuoi500Ms,
+                       uint8_t hamKhiChayDuoi1000Ms,
+                       uint8_t hamKhiChayDuoi1500Ms,
+                       uint8_t hamKhiChayDuoi2000Ms,
+                       uint8_t hamKhiChayDuoi3000Ms,
+                       uint8_t hamKhiChayTu3000Ms);
 
  private:
   /**

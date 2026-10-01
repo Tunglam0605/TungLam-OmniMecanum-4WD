@@ -7,6 +7,18 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.1] - 2026-10-01
+
+### Arduino IDE autocomplete learning hints
+- Renamed public function parameter identifiers to descriptive Vietnamese-style ASCII names so Arduino IDE shows useful meaning directly in the autocomplete signature while the student is typing.
+- Examples include `kieuDe`, `thongSoRobot`, `soBanh`, `daoChieu`, `vxTienMps`, `vyTraiMps`, `wzQuayTraiRadps`, `thoiGianMatLenhMs`, and `doManhHam`.
+- Kept full Vietnamese Doxygen/hover documentation with accented text.
+- Strengthened the API documentation CI check so every declared parameter name must have a matching `@param` entry.
+- Parameter-name changes do not change C++ function signatures, overload resolution, ABI, or existing call sites.
+
+### Compatibility
+- Documentation/autocomplete metadata patch only; no executable motor, kinematics, safety, ABS, timer, pin-map, or Legacy V5 behavior change from v0.10.0.
+
 ## [0.10.0] - 2026-10-01
 
 ### Smart control and AVR optimization

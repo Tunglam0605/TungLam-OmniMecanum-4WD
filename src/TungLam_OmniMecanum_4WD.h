@@ -88,203 +88,203 @@ class TungLam_Control_MotorV5 {
 
   /**
    * @brief Khởi tạo Timer1 phụ theo API lịch sử V5.
-   * @param duty11 Duty kênh 11, giá trị 0..255.
-   * @param duty12 Duty kênh 12, giá trị 0..255.
+   * @param pwmD11 Duty kênh 11, giá trị 0..255.
+   * @param pwmD12 Duty kênh 12, giá trị 0..255.
    * @warning Có thể xung đột với thư viện khác cũng dùng Timer1.
    */
-  void Init_Timer1(uint8_t duty11, uint8_t duty12);
+  void Init_Timer1(uint8_t pwmD11, uint8_t pwmD12);
 
   /**
    * @brief Khởi tạo Timer2 phụ theo API lịch sử V5.
-   * @param duty9 Duty kênh 9, giá trị 0..255.
-   * @param duty10 Duty kênh 10, giá trị 0..255.
+   * @param pwmD9 Duty kênh 9, giá trị 0..255.
+   * @param pwmD10 Duty kênh 10, giá trị 0..255.
    * @warning Có thể xung đột với thư viện khác cũng dùng Timer2.
    */
-  void Init_Timer2(uint8_t duty9, uint8_t duty10);
+  void Init_Timer2(uint8_t pwmD9, uint8_t pwmD10);
 
   /** @brief Dừng 4 motor và reset state chuyển động/ABS của V5. */
   void STOP();
 
   /**
    * @brief Cho robot chạy thẳng tiến bằng API V5.
-   * @param duty PWM chung cho 4 bánh, 0..255.
+   * @param pwm PWM chung cho 4 bánh, 0..255.
    */
-  void moveForward(uint8_t duty);
+  void moveForward(uint8_t pwm);
 
   /**
    * @brief Cho robot chạy thẳng lùi bằng API V5.
-   * @param duty PWM chung cho 4 bánh, 0..255.
+   * @param pwm PWM chung cho 4 bánh, 0..255.
    */
-  void moveBackward(uint8_t duty);
+  void moveBackward(uint8_t pwm);
 
   /**
    * @brief Cho robot đi chéo tiến-phải.
-   * @param duty PWM của các bánh đang hoạt động, 0..255.
+   * @param pwm PWM của các bánh đang hoạt động, 0..255.
    */
-  void Forward_Right(uint8_t duty);
+  void Forward_Right(uint8_t pwm);
 
   /**
    * @brief Cho robot đi chéo lùi-phải.
-   * @param duty PWM của các bánh đang hoạt động, 0..255.
+   * @param pwm PWM của các bánh đang hoạt động, 0..255.
    */
-  void Backward_Right(uint8_t duty);
+  void Backward_Right(uint8_t pwm);
 
   /**
    * @brief Quay robot sang phải / cùng chiều kim đồng hồ.
-   * @param duty PWM quay, 0..255.
+   * @param pwm PWM quay, 0..255.
    */
-  void moveRight(uint8_t duty);
+  void moveRight(uint8_t pwm);
 
   /**
    * @brief Quay robot sang trái / ngược chiều kim đồng hồ.
-   * @param duty PWM quay, 0..255.
+   * @param pwm PWM quay, 0..255.
    */
-  void moveLeft(uint8_t duty);
+  void moveLeft(uint8_t pwm);
 
   /**
    * @brief Cho đế Mecanum đi ngang sang trái.
-   * @param duty PWM dịch ngang, 0..255.
+   * @param pwm PWM dịch ngang, 0..255.
    */
-  void moveLeftSide(uint8_t duty);
+  void moveLeftSide(uint8_t pwm);
 
   /**
    * @brief Cho đế Mecanum đi ngang sang phải.
-   * @param duty PWM dịch ngang, 0..255.
+   * @param pwm PWM dịch ngang, 0..255.
    */
-  void moveRightSide(uint8_t duty);
+  void moveRightSide(uint8_t pwm);
 
   /**
    * @brief Cho robot đi chéo tiến-trái.
-   * @param duty PWM của các bánh đang hoạt động, 0..255.
+   * @param pwm PWM của các bánh đang hoạt động, 0..255.
    */
-  void Forward_Left(uint8_t duty);
+  void Forward_Left(uint8_t pwm);
 
   /**
    * @brief Cho robot đi chéo lùi-trái.
-   * @param duty PWM của các bánh đang hoạt động, 0..255.
+   * @param pwm PWM của các bánh đang hoạt động, 0..255.
    */
-  void Backward_Left(uint8_t duty);
+  void Backward_Left(uint8_t pwm);
 
   /**
    * @brief Hãm ngược chủ động theo hướng chuyển động V5 trước đó.
-   * @param duty Duty hãm thực tế từ 0..255.
+   * @param doManhHam Duty hãm thực tế từ 0..255.
    *
    * Timer3 overflow ISR tự kết thúc xung hãm, nên code V5 không cần update().
    */
-  void ABS(uint8_t duty);
+  void ABS(uint8_t doManhHam);
 
   /**
    * @brief Điều khiển trực tiếp chiều một bánh theo convention V5.
-   * @param BanhNumber Số bánh từ 1 đến 4.
-   * @param Set Giá trị chiều theo convention lịch sử.
+   * @param soBanh Số bánh từ 1 đến 4.
+   * @param chieu Giá trị chiều theo convention lịch sử.
    */
-  void Dir(uint8_t BanhNumber, bool Set);
+  void Dir(uint8_t soBanh, bool chieu);
 
   /**
    * @brief Chạy tiến với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void Tien(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Tien(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Chạy lùi với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1, 0..255.
-   * @param duty2 PWM M2, 0..255.
-   * @param duty3 PWM M3, 0..255.
-   * @param duty4 PWM M4, 0..255.
+   * @param pwmM1 PWM M1, 0..255.
+   * @param pwmM2 PWM M2, 0..255.
+   * @param pwmM3 PWM M3, 0..255.
+   * @param pwmM4 PWM M4, 0..255.
    */
-  void Lui(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Lui(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Quay trái với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1, 0..255.
-   * @param duty2 PWM M2, 0..255.
-   * @param duty3 PWM M3, 0..255.
-   * @param duty4 PWM M4, 0..255.
+   * @param pwmM1 PWM M1, 0..255.
+   * @param pwmM2 PWM M2, 0..255.
+   * @param pwmM3 PWM M3, 0..255.
+   * @param pwmM4 PWM M4, 0..255.
    */
-  void Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Quay phải với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1, 0..255.
-   * @param duty2 PWM M2, 0..255.
-   * @param duty3 PWM M3, 0..255.
-   * @param duty4 PWM M4, 0..255.
+   * @param pwmM1 PWM M1, 0..255.
+   * @param pwmM2 PWM M2, 0..255.
+   * @param pwmM3 PWM M3, 0..255.
+   * @param pwmM4 PWM M4, 0..255.
    */
-  void Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi chéo tiến-trái với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void T_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void T_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi chéo tiến-phải với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void T_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void T_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi chéo lùi-trái với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void L_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void L_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi chéo lùi-phải với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void L_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void L_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi ngang trái với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void N_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void N_Trai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Đi ngang phải với PWM riêng cho từng bánh.
-   * @param duty1 PWM M1 trước-trái, 0..255.
-   * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param pwmM1 PWM M1 trước-trái, 0..255.
+   * @param pwmM2 PWM M2 sau-trái, 0..255.
+   * @param pwmM3 PWM M3 trước-phải, 0..255.
+   * @param pwmM4 PWM M4 sau-phải, 0..255.
    */
-  void N_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
+  void N_Phai(uint8_t pwmM1, uint8_t pwmM2, uint8_t pwmM3, uint8_t pwmM4);
 
   /**
    * @brief Cấu hình thời gian ABS theo thời gian robot đã chạy trước khi hãm.
-   * @param t500 Xung hãm [ms] khi thời gian chạy <500 ms.
-   * @param t1000 Xung hãm [ms] khi thời gian chạy 500..999 ms.
-   * @param t1500 Xung hãm [ms] khi thời gian chạy 1000..1499 ms.
-   * @param t2000 Xung hãm [ms] khi thời gian chạy 1500..1999 ms.
-   * @param t3000 Xung hãm [ms] khi thời gian chạy 2000..2999 ms.
-   * @param tAbove3000 Xung hãm [ms] khi thời gian chạy >=3000 ms.
+   * @param hamKhiChayDuoi500Ms Xung hãm [ms] khi thời gian chạy <500 ms.
+   * @param hamKhiChayDuoi1000Ms Xung hãm [ms] khi thời gian chạy 500..999 ms.
+   * @param hamKhiChayDuoi1500Ms Xung hãm [ms] khi thời gian chạy 1000..1499 ms.
+   * @param hamKhiChayDuoi2000Ms Xung hãm [ms] khi thời gian chạy 1500..1999 ms.
+   * @param hamKhiChayDuoi3000Ms Xung hãm [ms] khi thời gian chạy 2000..2999 ms.
+   * @param hamKhiChayTu3000Ms Xung hãm [ms] khi thời gian chạy >=3000 ms.
    */
-  void setTimABS(uint8_t t500,
-                 uint8_t t1000,
-                 uint8_t t1500,
-                 uint8_t t2000,
-                 uint8_t t3000,
-                 uint8_t tAbove3000);
+  void setTimABS(uint8_t hamKhiChayDuoi500Ms,
+                 uint8_t hamKhiChayDuoi1000Ms,
+                 uint8_t hamKhiChayDuoi1500Ms,
+                 uint8_t hamKhiChayDuoi2000Ms,
+                 uint8_t hamKhiChayDuoi3000Ms,
+                 uint8_t hamKhiChayTu3000Ms);
 
  private:
   /** @brief Reset thanh ghi timer legacy trước khi cấu hình lại. */
@@ -346,28 +346,28 @@ struct TungLamDriveConfig {
 
   /**
    * @brief Tạo cấu hình vật lý của motor và kích thước đế.
-   * @param motorVoltageV Điện áp danh định của motor [V], ví dụ 12 hoặc 24.
-   * @param noLoadRpm RPM không tải tại trục đầu ra cuối cùng kéo bánh.
-   * @param supplyV Điện áp thực cấp cho driver/H-bridge [V].
-   * @param radiusM Bán kính lăn hiệu dụng của bánh [m].
-   * @param wheelbase Khoảng cách tâm bánh trước - tâm bánh sau [m].
-   * @param trackWidth Khoảng cách tâm bánh trái - tâm bánh phải [m].
-   * @param calibrationScale Hệ số hiệu chỉnh vòng hở; bắt đầu từ 1.0 rồi đo thực tế để tune.
+   * @param dienApMotorV Điện áp danh định của motor [V], ví dụ 12 hoặc 24.
+   * @param tocDoKhongTaiRpm RPM không tải tại trục đầu ra cuối cùng kéo bánh.
+   * @param dienApNguonV Điện áp thực cấp cho driver/H-bridge [V].
+   * @param banKinhBanhM Bán kính lăn hiệu dụng của bánh [m].
+   * @param chieuDaiTamBanhM Khoảng cách tâm bánh trước - tâm bánh sau [m].
+   * @param chieuRongTamBanhM Khoảng cách tâm bánh trái - tâm bánh phải [m].
+   * @param heSoHieuChinh Hệ số hiệu chỉnh vòng hở; bắt đầu từ 1.0 rồi đo thực tế để tune.
    */
-  TungLamDriveConfig(float motorVoltageV = 0.0f,
-                     float noLoadRpm = 0.0f,
-                     float supplyV = 0.0f,
-                     float radiusM = 0.0f,
-                     float wheelbase = 0.0f,
-                     float trackWidth = 0.0f,
-                     float calibrationScale = 1.0f)
-      : motorNominalVoltageV(motorVoltageV),
-        motorNoLoadRpm(noLoadRpm),
-        supplyVoltageV(supplyV),
-        wheelRadiusM(radiusM),
-        wheelbaseM(wheelbase),
-        trackWidthM(trackWidth),
-        speedScale(calibrationScale) {}
+  TungLamDriveConfig(float dienApMotorV = 0.0f,
+                     float tocDoKhongTaiRpm = 0.0f,
+                     float dienApNguonV = 0.0f,
+                     float banKinhBanhM = 0.0f,
+                     float chieuDaiTamBanhM = 0.0f,
+                     float chieuRongTamBanhM = 0.0f,
+                     float heSoHieuChinh = 1.0f)
+      : motorNominalVoltageV(dienApMotorV),
+        motorNoLoadRpm(tocDoKhongTaiRpm),
+        supplyVoltageV(dienApNguonV),
+        wheelRadiusM(banKinhBanhM),
+        wheelbaseM(chieuDaiTamBanhM),
+        trackWidthM(chieuRongTamBanhM),
+        speedScale(heSoHieuChinh) {}
 };
 
 /** @brief Vận tốc tiếp tuyến có dấu của từng bánh, đơn vị m/s. */
@@ -400,11 +400,11 @@ class TungLamDrive4WD {
 
   /**
    * @brief Khởi tạo thư viện và phần cứng điều khiển 4 motor.
-   * @param pwmMode Chọn tần số PWM. High7k8Hz là lựa chọn khuyến nghị.
+   * @param cheDoPWM Chọn tần số PWM. High7k8Hz là lựa chọn khuyến nghị.
    *
    * Gọi một lần trong setup() trước các lệnh chuyển động.
    */
-  void begin(TungLamPwmMode pwmMode = TungLamPwmMode::High7k8Hz);
+  void begin(TungLamPwmMode cheDoPWM = TungLamPwmMode::High7k8Hz);
 
   /**
    * @brief Đồng bộ state phần mềm sau các sự kiện hardware-timed.
@@ -415,9 +415,9 @@ class TungLamDrive4WD {
 
   /**
    * @brief Chọn loại đế để thư viện dùng đúng phương trình động học.
-   * @param chassis MecanumX hoặc OmniX.
+   * @param kieuDe MecanumX hoặc OmniX.
    */
-  void setChassis(TungLamChassis chassis);
+  void setChassis(TungLamChassis kieuDe);
 
   /**
    * @brief Đọc loại đế đang được chọn.
@@ -427,49 +427,49 @@ class TungLamDrive4WD {
 
   /**
    * @brief Đảo chiều logic riêng một motor mà không cần sửa phương trình động học.
-   * @param wheel Số motor: 1=M1 trước-trái, 2=M2 sau-trái, 3=M3 trước-phải, 4=M4 sau-phải.
-   * @param inverted true = đảo chiều motor; false = dùng chiều mặc định.
+   * @param soBanh Số motor: 1=M1 trước-trái, 2=M2 sau-trái, 3=M3 trước-phải, 4=M4 sau-phải.
+   * @param daoChieu true = đảo chiều motor; false = dùng chiều mặc định.
    *
    * Dùng khi một motor lắp/đấu ngược so với quy ước của thư viện.
    */
-  void setMotorInverted(uint8_t wheel, bool inverted);
+  void setMotorInverted(uint8_t soBanh, bool daoChieu);
 
   /**
    * @brief Đặt thời gian chết khi đổi chiều H-bridge để tránh đảo chiều khi PWM còn hoạt động.
-   * @param deadTimeUs Thời gian chết tính bằng micro giây [us]. Mặc định 100 us.
+   * @param thoiGianChetUs Thời gian chết tính bằng micro giây [us]. Mặc định 100 us.
    */
-  void setDirectionDeadTimeUs(uint16_t deadTimeUs);
+  void setDirectionDeadTimeUs(uint16_t thoiGianChetUs);
 
   /**
    * @brief Điều khiển trực tiếp 4 bánh bằng PWM có dấu.
-   * @param m1 M1 trước-trái: -255..255.
-   * @param m2 M2 sau-trái: -255..255.
-   * @param m3 M3 trước-phải: -255..255.
-   * @param m4 M4 sau-phải: -255..255.
+   * @param lenhM1 M1 trước-trái: -255..255.
+   * @param lenhM2 M2 sau-trái: -255..255.
+   * @param lenhM3 M3 trước-phải: -255..255.
+   * @param lenhM4 M4 sau-phải: -255..255.
    *
    * Dương = tiến logic, âm = lùi logic, 0 = dừng bánh.
    * Phù hợp khi bạn tự viết thuật toán động học/điều khiển riêng.
    */
-  void setWheels(int16_t m1, int16_t m2, int16_t m3, int16_t m4);
+  void setWheels(int16_t lenhM1, int16_t lenhM2, int16_t lenhM3, int16_t lenhM4);
 
   /**
    * @brief Điều khiển robot theo vx, vy, wz dạng normalized -255..255.
-   * @param vx Vận tốc tương đối trục X: dương=tiến, âm=lùi.
-   * @param vy Vận tốc tương đối trục Y: dương=trái, âm=phải.
-   * @param wz Tốc độ quay tương đối trục Z: dương=CCW/trái, âm=CW/phải.
+   * @param vxTien Vận tốc tương đối trục X: dương=tiến, âm=lùi.
+   * @param vyTrai Vận tốc tương đối trục Y: dương=trái, âm=phải.
+   * @param wzQuayTrai Tốc độ quay tương đối trục Z: dương=CCW/trái, âm=CW/phải.
    *
    * Đây không phải đơn vị vật lý. Muốn dùng m/s và rad/s hãy dùng driveVelocity().
    */
-  void drive(int16_t vx, int16_t vy, int16_t wz);
+  void drive(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /**
    * @brief Khai báo thông số motor và kích thước đế cho động học SI.
-   * @param config Cấu hình gồm điện áp, RPM, bán kính bánh, wheelbase, track width và speedScale.
+   * @param thongSoRobot Cấu hình gồm điện áp, RPM, bán kính bánh, wheelbase, track width và speedScale.
    * @return true nếu cấu hình hợp lệ; false nếu có thông số bắt buộc <= 0.
    *
    * Cần gọi hàm này trước driveVelocity().
    */
-  bool setDriveConfig(const TungLamDriveConfig& config);
+  bool setDriveConfig(const TungLamDriveConfig& thongSoRobot);
 
   /**
    * @brief Đọc lại cấu hình vật lý motor/chassis hiện tại.
@@ -509,62 +509,62 @@ class TungLamDrive4WD {
 
   /**
    * @brief Động học nghịch: đổi vận tốc thân robot thành vận tốc từng bánh.
-   * @param vxMps Vận tốc X [m/s]: dương=tiến, âm=lùi.
-   * @param vyMps Vận tốc Y [m/s]: dương=trái, âm=phải.
-   * @param wzRadps Tốc độ quay Z [rad/s]: dương=CCW/trái, âm=CW/phải.
+   * @param vxTienMps Vận tốc X [m/s]: dương=tiến, âm=lùi.
+   * @param vyTraiMps Vận tốc Y [m/s]: dương=trái, âm=phải.
+   * @param wzQuayTraiRadps Tốc độ quay Z [rad/s]: dương=CCW/trái, âm=CW/phải.
    * @return TungLamWheelVelocity chứa vận tốc M1..M4 theo m/s.
    *
    * Hàm chỉ tính toán, không làm motor quay.
    */
-  TungLamWheelVelocity inverseKinematics(float vxMps,
-                                         float vyMps,
-                                         float wzRadps) const;
+  TungLamWheelVelocity inverseKinematics(float vxTienMps,
+                                         float vyTraiMps,
+                                         float wzQuayTraiRadps) const;
 
   /**
    * @brief Động học thuận: đổi vận tốc từng bánh thành vx, vy, wz của robot.
-   * @param wheels Vận tốc tiếp tuyến M1..M4 [m/s], thường lấy từ encoder sau này.
+   * @param tocDoBanh Vận tốc tiếp tuyến M1..M4 [m/s], thường lấy từ encoder sau này.
    * @return TungLamBodyVelocity gồm vx [m/s], vy [m/s], wz [rad/s].
    *
    * Hàm chỉ tính toán; thư viện hiện không tự đọc encoder.
    */
   TungLamBodyVelocity forwardKinematics(
-      const TungLamWheelVelocity& wheels) const;
+      const TungLamWheelVelocity& tocDoBanh) const;
 
   /**
    * @brief Điều khiển robot bằng vận tốc vật lý SI: m/s và rad/s.
-   * @param vxMps Vận tốc X [m/s]: dương=tiến, âm=lùi.
-   * @param vyMps Vận tốc Y [m/s]: dương=trái, âm=phải.
-   * @param wzRadps Tốc độ quay Z [rad/s]: dương=CCW/trái, âm=CW/phải.
+   * @param vxTienMps Vận tốc X [m/s]: dương=tiến, âm=lùi.
+   * @param vyTraiMps Vận tốc Y [m/s]: dương=trái, âm=phải.
+   * @param wzQuayTraiRadps Tốc độ quay Z [rad/s]: dương=CCW/trái, âm=CW/phải.
    * @return true nếu lệnh được xử lý; false nếu chưa có TungLamDriveConfig hợp lệ.
    *
    * Nếu yêu cầu vượt tốc độ model, thư viện tự scale đồng đều tốc độ 4 bánh
    * để giữ tỷ lệ động học. Hiện đây là feed-forward vòng hở, chưa phải PID encoder.
    */
-  bool driveVelocity(float vxMps, float vyMps, float wzRadps);
+  bool driveVelocity(float vxTienMps, float vyTraiMps, float wzQuayTraiRadps);
 
   /**
    * @brief Bật gói an toàn thông minh chỉ bằng một lệnh.
-   * @param timeoutMs Thời gian tối đa không nhận lệnh mới trước khi tự dừng [ms]. 0 = tắt watchdog.
-   * @param linearAccelMps2 Giới hạn thay đổi vx/vy [m/s^2]. <=0 = không giới hạn mềm.
-   * @param yawAccelRadps2 Giới hạn thay đổi wz [rad/s^2]. <=0 = không giới hạn mềm.
+   * @param thoiGianMatLenhMs Thời gian tối đa không nhận lệnh mới trước khi tự dừng [ms]. 0 = tắt watchdog.
+   * @param gioiHanGiaTocTinhTienMps2 Giới hạn thay đổi vx/vy [m/s^2]. <=0 = không giới hạn mềm.
+   * @param gioiHanGiaTocQuayRadps2 Giới hạn thay đổi wz [rad/s^2]. <=0 = không giới hạn mềm.
    *
    * Sau khi bật, hãy gọi update() liên tục trong loop(). Thư viện tự xử lý
    * watchdog mất lệnh và làm mượt driveVelocity().
    */
-  void enableSmartSafety(uint16_t timeoutMs = 500,
-                         float linearAccelMps2 = 1.0f,
-                         float yawAccelRadps2 = 2.0f);
+  void enableSmartSafety(uint16_t thoiGianMatLenhMs = 500,
+                         float gioiHanGiaTocTinhTienMps2 = 1.0f,
+                         float gioiHanGiaTocQuayRadps2 = 2.0f);
 
   /** @brief Tắt watchdog và giới hạn tăng/giảm tốc thông minh. */
   void disableSmartSafety();
 
   /**
    * @brief Đặt watchdog tự dừng nếu chương trình mất lệnh điều khiển.
-   * @param timeoutMs Timeout [ms]. 0 = tắt watchdog.
+   * @param thoiGianMatLenhMs Timeout [ms]. 0 = tắt watchdog.
    *
    * Cần gọi update() liên tục trong loop() để watchdog hoạt động.
    */
-  void setCommandTimeoutMs(uint16_t timeoutMs);
+  void setCommandTimeoutMs(uint16_t thoiGianMatLenhMs);
 
   /**
    * @brief Kiểm tra watchdog có vừa tự dừng robot do mất lệnh hay không.
@@ -574,11 +574,11 @@ class TungLamDrive4WD {
 
   /**
    * @brief Bật giới hạn tăng/giảm vận tốc cho driveVelocity().
-   * @param linearAccelMps2 Mức thay đổi tối đa của vx và vy [m/s^2].
-   * @param yawAccelRadps2 Mức thay đổi tối đa của wz [rad/s^2].
+   * @param gioiHanGiaTocTinhTienMps2 Mức thay đổi tối đa của vx và vy [m/s^2].
+   * @param gioiHanGiaTocQuayRadps2 Mức thay đổi tối đa của wz [rad/s^2].
    * @return true nếu cả hai giới hạn >0; false nếu thông số không hợp lệ và ramp bị tắt.
    */
-  bool setVelocityRamp(float linearAccelMps2, float yawAccelRadps2);
+  bool setVelocityRamp(float gioiHanGiaTocTinhTienMps2, float gioiHanGiaTocQuayRadps2);
 
   /** @brief Tắt giới hạn tăng/giảm vận tốc của driveVelocity(). */
   void disableVelocityRamp();
@@ -609,55 +609,55 @@ class TungLamDrive4WD {
 
   /**
    * @brief Điều khiển trực tiếp mixer Mecanum-X bằng vx, vy, wz normalized.
-   * @param vx -255..255; dương=tiến.
-   * @param vy -255..255; dương=trái.
-   * @param wz -255..255; dương=quay CCW/trái.
+   * @param vxTien -255..255; dương=tiến.
+   * @param vyTrai -255..255; dương=trái.
+   * @param wzQuayTrai -255..255; dương=quay CCW/trái.
    */
-  void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
+  void driveMecanum(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /**
    * @brief Điều khiển trực tiếp mixer Omni X-drive canonical bằng lệnh normalized.
-   * @param vx -255..255; dương=tiến.
-   * @param vy -255..255; dương=trái.
-   * @param wz -255..255; dương=quay CCW/trái.
+   * @param vxTien -255..255; dương=tiến.
+   * @param vyTrai -255..255; dương=trái.
+   * @param wzQuayTrai -255..255; dương=quay CCW/trái.
    */
-  void driveOmniX(int16_t vx, int16_t vy, int16_t wz);
+  void driveOmniX(int16_t vxTien, int16_t vyTrai, int16_t wzQuayTrai);
 
   /**
    * @brief Cho robot chạy thẳng tiến.
-   * @param duty PWM từ 0..255; số càng lớn thì duty càng cao.
+   * @param pwm PWM từ 0..255; số càng lớn thì duty càng cao.
    */
-  void forward(uint8_t duty);
+  void forward(uint8_t pwm);
 
   /**
    * @brief Cho robot chạy thẳng lùi.
-   * @param duty PWM từ 0..255.
+   * @param pwm PWM từ 0..255.
    */
-  void backward(uint8_t duty);
+  void backward(uint8_t pwm);
 
   /**
    * @brief Cho đế đa hướng đi ngang sang phải (-Y).
-   * @param duty PWM từ 0..255.
+   * @param pwm PWM từ 0..255.
    */
-  void strafeRight(uint8_t duty);
+  void strafeRight(uint8_t pwm);
 
   /**
    * @brief Cho đế đa hướng đi ngang sang trái (+Y).
-   * @param duty PWM từ 0..255.
+   * @param pwm PWM từ 0..255.
    */
-  void strafeLeft(uint8_t duty);
+  void strafeLeft(uint8_t pwm);
 
   /**
    * @brief Cho robot quay phải / cùng chiều kim đồng hồ (CW, -wz).
-   * @param duty PWM từ 0..255.
+   * @param pwm PWM từ 0..255.
    */
-  void rotateRight(uint8_t duty);
+  void rotateRight(uint8_t pwm);
 
   /**
    * @brief Cho robot quay trái / ngược chiều kim đồng hồ (CCW, +wz).
-   * @param duty PWM từ 0..255.
+   * @param pwm PWM từ 0..255.
    */
-  void rotateLeft(uint8_t duty);
+  void rotateLeft(uint8_t pwm);
 
   /**
    * @brief Dừng robot theo kiểu coast: PWM về 0, không chủ động ghìm motor.
@@ -678,17 +678,17 @@ class TungLamDrive4WD {
 
   /**
    * @brief Hãm ngược chủ động (ABS): tạo mô-men ngược trong thời gian ngắn.
-   * @param brakeDuty Duty hãm thực tế từ 0..255.
+   * @param doManhHam Duty hãm thực tế từ 0..255.
    *
    * Timer3 ISR tự kết thúc xung hãm. Duty/thời gian quá lớn có thể gây dòng cao.
    */
-  void ABS(uint8_t brakeDuty);
+  void ABS(uint8_t doManhHam);
 
   /**
    * @brief Tên dễ hiểu hơn của ABS(); thực hiện hãm ngược chủ động.
-   * @param brakeDuty Duty hãm từ 0..255.
+   * @param doManhHam Duty hãm từ 0..255.
    */
-  void activeBrake(uint8_t brakeDuty);
+  void activeBrake(uint8_t doManhHam);
 
   /**
    * @brief Kiểm tra xung ABS hiện còn đang hoạt động hay không.
@@ -703,35 +703,35 @@ class TungLamDrive4WD {
 
   /**
    * @brief Cấu hình thời gian xung ABS theo thời gian robot đã chạy.
-   * @param t500 Thời gian hãm [ms] khi robot đã chạy <500 ms.
-   * @param t1000 Thời gian hãm [ms] khi đã chạy 500..999 ms.
-   * @param t1500 Thời gian hãm [ms] khi đã chạy 1000..1499 ms.
-   * @param t2000 Thời gian hãm [ms] khi đã chạy 1500..1999 ms.
-   * @param t3000 Thời gian hãm [ms] khi đã chạy 2000..2999 ms.
-   * @param tAbove3000 Thời gian hãm [ms] khi đã chạy >=3000 ms.
+   * @param hamKhiChayDuoi500Ms Thời gian hãm [ms] khi robot đã chạy <500 ms.
+   * @param hamKhiChayDuoi1000Ms Thời gian hãm [ms] khi đã chạy 500..999 ms.
+   * @param hamKhiChayDuoi1500Ms Thời gian hãm [ms] khi đã chạy 1000..1499 ms.
+   * @param hamKhiChayDuoi2000Ms Thời gian hãm [ms] khi đã chạy 1500..1999 ms.
+   * @param hamKhiChayDuoi3000Ms Thời gian hãm [ms] khi đã chạy 2000..2999 ms.
+   * @param hamKhiChayTu3000Ms Thời gian hãm [ms] khi đã chạy >=3000 ms.
    */
-  void setTimABS(uint8_t t500,
-                 uint8_t t1000,
-                 uint8_t t1500,
-                 uint8_t t2000,
-                 uint8_t t3000,
-                 uint8_t tAbove3000);
+  void setTimABS(uint8_t hamKhiChayDuoi500Ms,
+                 uint8_t hamKhiChayDuoi1000Ms,
+                 uint8_t hamKhiChayDuoi1500Ms,
+                 uint8_t hamKhiChayDuoi2000Ms,
+                 uint8_t hamKhiChayDuoi3000Ms,
+                 uint8_t hamKhiChayTu3000Ms);
 
   /**
    * @brief Tên dễ hiểu hơn của setTimABS(); cấu hình 6 mốc thời gian hãm.
-   * @param t500 Xung hãm [ms] cho <500 ms.
-   * @param t1000 Xung hãm [ms] cho 500..999 ms.
-   * @param t1500 Xung hãm [ms] cho 1000..1499 ms.
-   * @param t2000 Xung hãm [ms] cho 1500..1999 ms.
-   * @param t3000 Xung hãm [ms] cho 2000..2999 ms.
-   * @param tAbove3000 Xung hãm [ms] cho >=3000 ms.
+   * @param hamKhiChayDuoi500Ms Xung hãm [ms] cho <500 ms.
+   * @param hamKhiChayDuoi1000Ms Xung hãm [ms] cho 500..999 ms.
+   * @param hamKhiChayDuoi1500Ms Xung hãm [ms] cho 1000..1499 ms.
+   * @param hamKhiChayDuoi2000Ms Xung hãm [ms] cho 1500..1999 ms.
+   * @param hamKhiChayDuoi3000Ms Xung hãm [ms] cho 2000..2999 ms.
+   * @param hamKhiChayTu3000Ms Xung hãm [ms] cho >=3000 ms.
    */
-  void setBrakeTimings(uint8_t t500,
-                       uint8_t t1000,
-                       uint8_t t1500,
-                       uint8_t t2000,
-                       uint8_t t3000,
-                       uint8_t tAbove3000);
+  void setBrakeTimings(uint8_t hamKhiChayDuoi500Ms,
+                       uint8_t hamKhiChayDuoi1000Ms,
+                       uint8_t hamKhiChayDuoi1500Ms,
+                       uint8_t hamKhiChayDuoi2000Ms,
+                       uint8_t hamKhiChayDuoi3000Ms,
+                       uint8_t hamKhiChayTu3000Ms);
 
  private:
   /** @brief Vector lệnh bánh nội bộ theo thứ tự M1..M4. */
