@@ -582,7 +582,7 @@ float TungLamDrive4WD::maxYawRateRadps() const {
   return driveConfigValid_ ? cachedMaxYawRadps_ : 0.0f;
 }
 
-TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
+TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
     float vxMps,
     float vyMps,
     float wzRadps) const {
@@ -752,7 +752,7 @@ TungLamBodyVelocity TungLamDrive4WD::appliedBodyVelocity() const {
   return appliedBodyVelocity_;
 }
 
-void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
+void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
 
   const Wheels out = normalize(
       mecanumM1(vx, vy, wz),
