@@ -1,127 +1,126 @@
 /**
  * @file LegacyApiSurface.ino
- * @brief Compile-time regression coverage for the complete original V5 public API.
+ * @brief Bài regression compile cho toàn bộ bề mặt API V5 cũ.
  *
- * This is primarily a CI/API compatibility example, not a motion demo.
- * exerciseLegacyApi() is intentionally NOT called from loop(), because calling
- * every movement function back-to-back would not be a useful physical test.
+ * Đây chủ yếu là ví dụ dành cho CI/API compatibility, không phải demo chạy xe.
+ * exerciseLegacyApi() cố tình KHÔNG được gọi trong loop(), vì gọi liên tiếp mọi
+ * lệnh chuyển động không có ý nghĩa khi test robot thật.
  */
 
-// Include the exact header name used by original V5 projects.
+// Nạp đúng tên header mà project V5 cũ từng sử dụng.
 #include <TungLam_Control_MotorV5.h>
 
-// Instantiate the legacy-compatible class exactly as old sketches do.
+// Tạo đúng class V5 để kiểm tra khả năng tương thích source.
 TungLam_Control_MotorV5 robot;
 
 /**
- * @brief Reference every preserved V5 public symbol so CI catches API regressions.
+ * @brief Tham chiếu toàn bộ symbol public V5 để CI phát hiện API bị phá.
  *
- * The compiler must successfully resolve every call below. If a future change
- * removes or changes a legacy function signature, this example should fail CI.
+ * Nếu về sau một hàm cũ bị xóa hoặc đổi signature, sketch này phải compile fail.
  */
 void exerciseLegacyApi() {
-  // Configure low-frequency legacy motor PWM.
+  // Chế độ PWM legacy tần số thấp.
   robot.Mode0();
 
-  // Configure high-frequency legacy motor PWM.
+  // Chế độ PWM legacy tần số cao.
   robot.Mode1();
 
-  // Exercise historical auxiliary Timer1 PWM initialization.
+  // Kiểm tra API khởi tạo Timer1 phụ.
   robot.Init_Timer1(0, 0);
 
-  // Exercise historical auxiliary Timer2 PWM initialization.
+  // Kiểm tra API khởi tạo Timer2 phụ.
   robot.Init_Timer2(0, 0);
 
-  // Stop all four drive motors.
+  // Dừng toàn bộ 4 bánh.
   robot.STOP();
 
-  // Drive straight forward using one common duty.
+  // Chạy tiến bằng duty chung.
   robot.moveForward(100);
 
-  // Drive straight backward using one common duty.
+  // Chạy lùi bằng duty chung.
   robot.moveBackward(100);
 
-  // Drive diagonally forward-right.
+  // Tiến chéo phải.
   robot.Forward_Right(100);
 
-  // Drive diagonally backward-right.
+  // Lùi chéo phải.
   robot.Backward_Right(100);
 
-  // Rotate right / clockwise.
+  // Quay phải / CW.
   robot.moveRight(100);
 
-  // Rotate left / counter-clockwise.
+  // Quay trái / CCW.
   robot.moveLeft(100);
 
-  // Strafe left.
+  // Đi ngang trái.
   robot.moveLeftSide(100);
 
-  // Strafe right.
+  // Đi ngang phải.
   robot.moveRightSide(100);
 
-  // Drive diagonally forward-left.
+  // Tiến chéo trái.
   robot.Forward_Left(100);
 
-  // Drive diagonally backward-left.
+  // Lùi chéo trái.
   robot.Backward_Left(100);
 
-  // Exercise direct wheel-1 direction selection with the old boolean convention.
+  // Kiểm tra API đổi chiều trực tiếp bánh 1.
   robot.Dir(1, false);
 
-  // Exercise direct wheel-2 direction selection.
+  // Kiểm tra API đổi chiều trực tiếp bánh 2.
   robot.Dir(2, true);
 
-  // Exercise direct wheel-3 direction selection.
+  // Kiểm tra API đổi chiều trực tiếp bánh 3.
   robot.Dir(3, false);
 
-  // Exercise direct wheel-4 direction selection.
+  // Kiểm tra API đổi chiều trực tiếp bánh 4.
   robot.Dir(4, true);
 
-  // Per-wheel-duty forward command.
+  // Tiến với PWM độc lập từng bánh.
   robot.Tien(100, 100, 100, 100);
 
-  // Per-wheel-duty backward command.
+  // Lùi với PWM độc lập từng bánh.
   robot.Lui(100, 100, 100, 100);
 
-  // Per-wheel-duty left rotation.
+  // Quay trái với PWM độc lập từng bánh.
   robot.Trai(100, 100, 100, 100);
 
-  // Per-wheel-duty right rotation.
+  // Quay phải với PWM độc lập từng bánh.
   robot.Phai(100, 100, 100, 100);
 
-  // Per-wheel-duty forward-left diagonal.
+  // Tiến-trái.
   robot.T_Trai(100, 100, 100, 100);
 
-  // Per-wheel-duty forward-right diagonal.
+  // Tiến-phải.
   robot.T_Phai(100, 100, 100, 100);
 
-  // Per-wheel-duty backward-left diagonal.
+  // Lùi-trái.
   robot.L_Trai(100, 100, 100, 100);
 
-  // Per-wheel-duty backward-right diagonal.
+  // Lùi-phải.
   robot.L_Phai(100, 100, 100, 100);
 
-  // Per-wheel-duty left strafe.
+  // Đi ngang trái.
   robot.N_Trai(100, 100, 100, 100);
 
-  // Per-wheel-duty right strafe.
+  // Đi ngang phải.
   robot.N_Phai(100, 100, 100, 100);
 
-  // Configure all six legacy ABS timing ranges.
+  // Kiểm tra API cấu hình timing ABS.
   robot.setTimABS(45, 65, 70, 75, 80, 85);
 
-  // Reference the legacy ABS function with a user-selected brake duty.
+  // Kiểm tra symbol ABS với duty do người dùng chọn.
   robot.ABS(100);
 }
 
 void setup() {
-  // Initialize the real hardware in the normal high-frequency legacy mode.
+  // Khởi tạo phần cứng ở Mode1.
   robot.Mode1();
 
-  // Leave the robot safely stopped because exerciseLegacyApi() is not executed.
+  // Giữ robot dừng vì exerciseLegacyApi() không chạy thật.
   robot.STOP();
 }
 
 void loop() {
-  // Intentionally empty: this sketch exists to compile-check the API surface.
+  // Cố tình để trống: sketch dùng để compile-check API.
 }

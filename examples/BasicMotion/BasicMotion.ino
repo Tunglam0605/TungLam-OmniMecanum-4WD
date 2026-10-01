@@ -1,66 +1,66 @@
 /**
  * @file BasicMotion.ino
- * @brief Beginner example using the original V5 movement-function names.
+ * @brief Ví dụ cơ bản cho người mới bằng các hàm chuyển động kiểu V5.
  *
- * Sequence:
- * 1. Move forward.
- * 2. Stop.
- * 3. Strafe right.
- * 4. Stop.
- * 5. Rotate left.
- * 6. Stop and repeat.
+ * Trình tự:
+ * 1. Chạy tiến.
+ * 2. Dừng.
+ * 3. Đi ngang phải.
+ * 4. Dừng.
+ * 5. Quay trái.
+ * 6. Dừng và lặp lại.
  *
- * The delay() calls are used only to make each movement easy to observe.
+ * delay() chỉ dùng để người học dễ quan sát từng chuyển động.
  */
 
-// Import the legacy-compatible V5 header.
+// Nạp header tương thích V5.
 #include <TungLam_Control_MotorV5.h>
 
-// Create one controller for all four drive motors.
+// Tạo một controller cho 4 động cơ.
 TungLam_Control_MotorV5 robot;
 
 void setup() {
-  // Configure the historical Mode1 hardware PWM frequency (~7.8125 kHz).
+  // Dùng Mode1 để chạy PWM khoảng 7,8125 kHz như các project V5 thực tế.
   robot.Mode1();
 
-  // Ensure the chassis starts with zero PWM and a cleared movement state.
+  // Đảm bảo robot khởi động ở trạng thái dừng.
   robot.STOP();
 }
 
 void loop() {
-  // Drive all four wheels in the logical forward direction at PWM 140.
+  // Cho cả 4 bánh chạy tiến với PWM 140.
   robot.moveForward(140);
 
-  // Hold the forward command for 1.2 s so the motion is visible.
+  // Giữ chuyển động tiến 1,2 giây.
   delay(1200);
 
-  // Stop all four drive motors.
+  // Dừng robot.
   robot.STOP();
 
-  // Pause before the next movement.
+  // Chờ 0,5 giây trước chuyển động tiếp theo.
   delay(500);
 
-  // Translate the Mecanum chassis to the right at PWM 140.
+  // Đi ngang sang phải với PWM 140.
   robot.moveRightSide(140);
 
-  // Hold the right-strafe command for 1.2 s.
+  // Giữ chuyển động ngang 1,2 giây.
   delay(1200);
 
-  // Stop before changing to a rotation command.
+  // Dừng trước khi đổi sang quay.
   robot.STOP();
 
-  // Pause between demonstrations.
+  // Chờ 0,5 giây.
   delay(500);
 
-  // Rotate the chassis to the left / counter-clockwise at PWM 120.
+  // Quay trái / ngược chiều kim đồng hồ với PWM 120.
   robot.moveLeft(120);
 
-  // Hold the rotation for 0.8 s.
+  // Giữ quay 0,8 giây.
   delay(800);
 
-  // Return the drive system to the stopped state.
+  // Dừng toàn bộ 4 bánh.
   robot.STOP();
 
-  // Wait 1 s before repeating the complete sequence.
+  // Chờ 1 giây rồi lặp lại toàn bộ chu trình.
   delay(1000);
 }

@@ -1,90 +1,91 @@
 /**
  * @file ActiveBrakeNonBlocking.ino
- * @brief Demonstrates hardware-timed ABS with a non-blocking application state machine.
+ * @brief Minh họa ABS hardware-timed kết hợp state machine không block chương trình.
  *
- * This example intentionally avoids delay() inside the motion sequence so the
- * application can continue processing other work while the brake pulse is active.
+ * Ví dụ này cố tình không dùng delay() trong chu trình chuyển động chính để
+ * chương trình vẫn có thể đọc sensor, joystick, Serial hoặc xử lý tác vụ khác
+ * trong khi xung hãm ABS đang hoạt động.
  *
- * Modern ABS behavior:
- * - ABS(duty) applies reverse torque immediately.
- * - Timer3 overflow ISR stops the physical brake pulse at the deadline.
- * - update() is optional for safety and only synchronizes high-level software state.
+ * Cơ chế ABS modern:
+ * - ABS(duty) áp mô-men ngược ngay lập tức.
+ * - Timer3 overflow ISR tự dừng xung hãm đúng deadline.
+ * - update() không cần cho an toàn phần cứng; nó chỉ đồng bộ state phần mềm.
  */
 
-// Import the modern 4WD API.
+// Nạp API modern của thư viện.
 #include <TungLam_OmniMecanum_4WD.h>
 
-// Create the single modern drive controller for this Arduino Mega.
+// Tạo một controller duy nhất cho phần cứng 4 bánh.
 TungLamDrive4WD robot;
 
-// Define the three states used by this demonstration loop.
+// Ba trạng thái của ví dụ.
 enum class DemoState : uint8_t {
-  Driving,  // Robot is actively driving forward.
-  Braking,  // An ABS reverse-torque pulse is currently active.
-  Waiting   // Robot is stopped and waiting before the next cycle.
+  Driving,  // Robot đang chạy tiến.
+  Braking,  // Robot đang trong xung hãm ABS.
+  Waiting   // Robot đã dừng và đang chờ trước chu kỳ tiếp theo.
 };
 
-// Start the state machine in the driving state.
+// Bắt đầu state machine ở trạng thái đang chạy.
 DemoState state = DemoState::Driving;
 
-// Store the millis() timestamp at which the current state started.
+// Lưu thời điểm bắt đầu state hiện tại.
 uint32_t stateStart = 0;
 
 void setup() {
-  // Initialize motor GPIO plus Timer3/Timer4 using the default high-frequency PWM mode.
+  // Khởi tạo GPIO và Timer3/Timer4 với PWM mặc định tần số cao.
   robot.begin();
 
-  // Select the Mecanum mixer that matches the original TungLam V5 movement convention.
+  // Chọn Mecanum-X.
   robot.setChassis(TungLamChassis::MecanumX);
 
-  // Configure the same six ABS timing ranges used by the legacy API.
+  // Cấu hình bảng thời gian ABS 6 khoảng.
   robot.setTimABS(45, 65, 70, 75, 80, 85);
 
-  // Begin the demonstration by driving forward at PWM 150.
+  // Bắt đầu ví dụ bằng việc chạy tiến PWM 150.
   robot.forward(150);
 
-  // Remember when the forward-driving interval started.
+  // Ghi lại thời điểm bắt đầu chạy.
   stateStart = millis();
 }
 
 void loop() {
-  // Synchronize software state after a Timer3 ISR brake cutoff.
-  // The physical ABS pulse is already hardware-timed, so this is not a safety requirement.
+  // Đồng bộ state phần mềm sau khi Timer3 ISR đã cắt xung ABS.
+  // Phần cứng vẫn an toàn ngay cả khi bỏ lệnh update() này.
   robot.update();
 
-  // Read millis() once so all state comparisons in this loop use the same timestamp.
+  // Đọc millis() một lần để mọi phép so sánh trong vòng loop dùng cùng timestamp.
   const uint32_t now = millis();
 
-  // After 1.5 s of forward motion, start active reverse braking.
+  // Sau 1,5 giây chạy tiến thì bắt đầu ABS.
   if (state == DemoState::Driving && now - stateStart >= 1500UL) {
-    // Use PWM 150 as the exact reverse-brake strength.
+    // Dùng PWM 150 làm lực hãm ngược thực tế.
     robot.ABS(150);
 
-    // Move the application state machine into the braking state.
+    // Chuyển state ứng dụng sang Braking.
     state = DemoState::Braking;
   }
 
-  // Wait until the Timer3 one-shot reports that the ABS pulse has finished.
+  // Chờ đến khi Timer3 báo xung ABS đã kết thúc.
   if (state == DemoState::Braking && !robot.isBraking()) {
-    // Enter the stopped waiting state.
+    // Chuyển sang trạng thái chờ.
     state = DemoState::Waiting;
 
-    // Record when the waiting interval started.
+    // Lưu thời điểm bắt đầu chờ.
     stateStart = now;
   }
 
-  // After waiting for 2 s, start the next forward-driving cycle.
+  // Sau 2 giây chờ thì chạy lại chu kỳ mới.
   if (state == DemoState::Waiting && now - stateStart >= 2000UL) {
-    // Drive forward again at the same PWM.
+    // Chạy tiến lại với PWM 150.
     robot.forward(150);
 
-    // Return to the driving state.
+    // Trở về trạng thái Driving.
     state = DemoState::Driving;
 
-    // Restart the driving interval timer.
+    // Bắt đầu lại timer của pha chạy.
     stateStart = now;
   }
 
-  // Other non-blocking work such as Serial, sensors, joystick parsing, or ROS
-  // communication could be added here without extending the ABS pulse duration.
+  // Có thể đặt các tác vụ không block khác ở đây:
+  // đọc Serial, cảm biến, PS2, IMU, ROS2 bridge...
 }

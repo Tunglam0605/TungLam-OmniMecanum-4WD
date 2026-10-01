@@ -1,49 +1,48 @@
 /**
  * @file LegacyV5DropIn.ino
- * @brief Demonstrates zero-source-change style migration from the original V5 library.
+ * @brief Minh họa khả năng cập nhật thư viện mà gần như không sửa code V5 cũ.
  *
- * The include name, class name, movement calls, ABS call, and setTimABS call are
- * intentionally the same style used by historical V5 sketches.
+ * Tên include, tên class, lệnh chuyển động, ABS và setTimABS đều giữ đúng phong
+ * cách của các sketch V5 trước đây.
  */
 
-// Include the compatibility header with the original V5 filename.
+// Nạp header compatibility với đúng tên cũ.
 #include <TungLam_Control_MotorV5.h>
 
-// Instantiate the original V5 class name.
+// Tạo object bằng class V5.
 TungLam_Control_MotorV5 robot;
 
 void setup() {
-  // Configure the same Mode1 hardware PWM profile used by old projects.
+  // Dùng Mode1 như project cũ.
   robot.Mode1();
 
-  // Configure the original six ABS timing intervals.
+  // Cấu hình 6 khoảng timing ABS.
   robot.setTimABS(45, 65, 70, 75, 80, 85);
 }
 
 void loop() {
-  // Drive forward at PWM 160 using the original V5 function.
+  // Chạy tiến PWM 160.
   robot.moveForward(160);
 
-  // Keep moving forward for 1.2 s.
+  // Giữ tiến 1,2 giây.
   delay(1200);
 
-  // Apply active reverse braking at exact PWM 200.
-  // The implementation is now non-blocking and Timer3 stops the pulse automatically.
+  // Hãm ngược với duty 200.
+  // Implementation mới không block và Timer3 tự cắt xung hãm.
   robot.ABS(200);
 
-  // Application execution continues immediately after ABS() returns.
-  // This delay is only part of the demonstration; it is not needed by ABS itself.
+  // delay này chỉ để minh họa, ABS không phụ thuộc vào nó.
   delay(500);
 
-  // Command the original V5 right-strafe movement at PWM 140.
+  // Đi ngang phải PWM 140 bằng hàm V5 cũ.
   robot.moveRightSide(140);
 
-  // Hold the strafe for one second.
+  // Giữ đi ngang 1 giây.
   delay(1000);
 
-  // Brake the right-strafe motion with reverse PWM 180.
+  // Hãm chuyển động ngang bằng duty 180.
   robot.ABS(180);
 
-  // Pause before repeating the example.
+  // Chờ trước khi lặp lại.
   delay(1000);
 }

@@ -1,74 +1,74 @@
 /**
  * @file PerWheelControl.ino
- * @brief Demonstrates the lowest public signed-wheel control layer.
+ * @brief Minh họa tầng điều khiển trực tiếp từng bánh bằng giá trị có dấu.
  *
- * setWheels(m1, m2, m3, m4) accepts:
- * - positive value -> logical forward
- * - negative value -> logical reverse
- * - zero           -> stop that wheel
- * - magnitude      -> PWM 0..255
+ * setWheels(m1, m2, m3, m4) quy ước:
+ * - giá trị dương -> chiều tiến logic
+ * - giá trị âm    -> chiều lùi logic
+ * - bằng 0        -> dừng bánh đó
+ * - độ lớn        -> PWM 0..255
  *
- * For first-time hardware commissioning, FirstMotorTest is the more complete example.
+ * Nếu đang commissioning phần cứng lần đầu, nên dùng FirstMotorTest vì đầy đủ hơn.
  */
 
-// Import the modern signed-wheel API.
+// Nạp modern API có setWheels().
 #include <TungLam_OmniMecanum_4WD.h>
 
-// Create the controller that owns the four drive motors.
+// Tạo controller sở hữu 4 motor của đế.
 TungLamDrive4WD robot;
 
 void setup() {
-  // Initialize motor GPIO plus the default high-frequency PWM mode.
+  // Khởi tạo GPIO motor và chế độ PWM tần số cao mặc định.
   robot.begin();
 
-  // Drive only M1 forward at PWM 80; M2/M3/M4 stay at zero.
+  // Chỉ cho M1 chạy tiến PWM 80; M2/M3/M4 giữ 0.
   robot.setWheels(80, 0, 0, 0);
 
-  // Observe M1 for 800 ms.
+  // Quan sát M1 trong 800 ms.
   delay(800);
 
-  // Stop all four motors before selecting the next wheel.
+  // Dừng toàn bộ trước khi đổi sang bánh khác.
   robot.stop();
 
-  // Pause so individual tests are visually distinct.
+  // Nghỉ để dễ phân biệt từng bài test.
   delay(500);
 
-  // Drive only M2 forward at PWM 80.
+  // Chỉ cho M2 chạy tiến PWM 80.
   robot.setWheels(0, 80, 0, 0);
 
-  // Observe M2 for 800 ms.
+  // Quan sát M2 trong 800 ms.
   delay(800);
 
-  // Stop all four motors.
+  // Dừng toàn bộ.
   robot.stop();
 
-  // Pause before M3.
+  // Nghỉ trước khi test M3.
   delay(500);
 
-  // Drive only M3 forward at PWM 80.
+  // Chỉ cho M3 chạy tiến PWM 80.
   robot.setWheels(0, 0, 80, 0);
 
-  // Observe M3 for 800 ms.
+  // Quan sát M3 trong 800 ms.
   delay(800);
 
-  // Stop all four motors.
+  // Dừng toàn bộ.
   robot.stop();
 
-  // Pause before M4.
+  // Nghỉ trước khi test M4.
   delay(500);
 
-  // Drive only M4 forward at PWM 80.
+  // Chỉ cho M4 chạy tiến PWM 80.
   robot.setWheels(0, 0, 0, 80);
 
-  // Observe M4 for 800 ms.
+  // Quan sát M4 trong 800 ms.
   delay(800);
 
-  // Leave the drive system stopped after commissioning.
+  // Kết thúc commissioning ở trạng thái dừng.
   robot.stop();
 }
 
 void loop() {
-  // Preserve the normal modern service call pattern from the original example.
-  // With no ABS active it has no motor-output effect, but it keeps software state synchronized.
+  // Giữ pattern gọi service của modern API.
+  // Khi không có ABS thì lệnh này không đổi motor output, chỉ đồng bộ state.
   robot.update();
 }

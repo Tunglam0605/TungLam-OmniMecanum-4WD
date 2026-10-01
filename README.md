@@ -2,7 +2,13 @@
 
 # 🤖 TungLam_OmniMecanum_4WD
 
-### Hardware-timer motor control for Arduino Mega 2560 • Mecanum-X • Omni-X • Legacy V5 compatible
+### Thư viện điều khiển đế robot Mecanum / Omni 4 bánh cho Arduino Mega 2560
+
+<p>
+  <a href="README.md">🇻🇳 Tiếng Việt</a>
+  •
+  <a href="README.en.md">🌐 English</a>
+</p>
 
 <p>
   <a href="https://github.com/Tunglam0605/TungLam-OmniMecanum-4WD/actions/workflows/compile-mega.yml">
@@ -20,247 +26,234 @@
   <img src="https://img.shields.io/github/v/release/Tunglam0605/TungLam-OmniMecanum-4WD?display_name=tag&sort=semver" alt="Latest release">
   <img src="https://img.shields.io/badge/board-Arduino%20Mega%202560-00878F" alt="Arduino Mega 2560">
   <img src="https://img.shields.io/badge/driver-2%C3%97%20L298N-blue" alt="2x L298N">
-  <img src="https://img.shields.io/badge/RoboBall%202024-5%2F5%20PASS-brightgreen" alt="RoboBall 2024 regression">
   <img src="https://img.shields.io/github/license/Tunglam0605/TungLam-OmniMecanum-4WD" alt="License">
 </p>
 
-**Author:** Nguyễn Khắc Tùng Lâm • **Class:** DHTD16A2CL • **Tung Lâm Automation**
+**Tác giả:** Nguyễn Khắc Tùng Lâm • **Lớp:** DHTD16A2CL • **Tung Lâm Automation**
 
-A compact Arduino library for 4-wheel holonomic robots using **hardware PWM**, a **shared safe motor HAL**, **Mecanum/Omni kinematics**, and **hardware-timed active reverse braking**.
+Thư viện điều khiển đế robot 4 bánh đa hướng, hướng tới cả **người mới**, **học sinh/sinh viên**, và các bài toán robotics nâng cao hơn với động học `vx, vy, wz`, đơn vị SI, ABS, PID/IMU/encoder trong tương lai.
 
 </div>
 
 ---
 
-## ✨ Why this library?
+# 🇻🇳 Bắt đầu nhanh
 
-This project started from the original **TungLam_Control_MotorV5** that was already used on real RoboBall robots. The current library keeps the familiar V5 API while improving the internal architecture for safer direction changes, non-blocking braking, cleaner maintenance, and modern vector control.
+Nếu bạn mới sử dụng thư viện, nên làm theo đúng thứ tự:
 
-### What you get
+1. Cài thư viện từ Arduino Library Manager.
+2. Đấu dây Arduino Mega → 2× L298N → 4 động cơ.
+3. Kê robot lên để 4 bánh không chạm sàn.
+4. Chạy ví dụ **FirstMotorTest**.
+5. Xác nhận đúng M1, M2, M3, M4 và đúng chiều quay.
+6. Chọn `MecanumX` hoặc `OmniX`.
+7. Test tiến/lùi/ngang/quay.
+8. Sau khi phần cứng đúng mới dùng `drive()`, `driveVelocity()` và ABS.
 
-- ✅ Arduino Mega 2560 / ATmega2560 support
-- ✅ 4 DC motors through **2× L298N**
-- ✅ **Mecanum-X** control
-- ✅ **Omni X-drive** control
-- ✅ Signed wheel control `-255 ... +255`
-- ✅ Standard right-handed body frame: `+X forward, +Y left, +Z/CCW yaw`
-- ✅ SI velocity API: `vx/vy` in m/s and `wz` in rad/s
-- ✅ Motor + chassis physical model: voltage, RPM, wheel radius, wheelbase, track width
-- ✅ Inverse + forward kinematics for Mecanum-X and canonical Omni-X
-- ✅ Hardware PWM using Timer3 + Timer4
-- ✅ High-frequency PWM around **7.8125 kHz**
-- ✅ Legacy PWM mode around **976.56 Hz**
-- ✅ Safe direction change: `PWM=0 → dead-time → DIR → PWM`
-- ✅ Per-motor inversion
-- ✅ Proportional wheel normalization
+---
+
+# ✨ Thư viện hiện hỗ trợ gì?
+
+- ✅ Arduino Mega 2560 / ATmega2560
+- ✅ 4 động cơ DC qua **2× L298N**
+- ✅ Mecanum-X
+- ✅ Omni X-drive
+- ✅ Điều khiển từng bánh `M1..M4`
+- ✅ Điều khiển normalized `-255..255`
+- ✅ Hệ tọa độ robot tay phải: `+X tiến, +Y trái, +Z quay CCW`
+- ✅ Điều khiển SI: `vx, vy` theo m/s và `wz` theo rad/s
+- ✅ Khai báo điện áp động cơ, RPM, bán kính bánh, wheelbase, track width
+- ✅ Inverse kinematics: `vx,vy,wz → tốc độ 4 bánh`
+- ✅ Forward kinematics: `tốc độ 4 bánh → vx,vy,wz`
+- ✅ Ước lượng RPM/tốc độ lý thuyết
+- ✅ Giới hạn tốc độ bằng cách scale đồng đều 4 bánh
+- ✅ PWM phần cứng Timer3 + Timer4
+- ✅ Dead-time khi đảo chiều
+- ✅ Đảo chiều riêng từng motor
 - ✅ Coast stop
-- ✅ L298N dynamic brake
-- ✅ Strong **active reverse brake / ABS**
-- ✅ Hardware-timed ABS cutoff using Timer3 overflow ISR
-- ✅ Full **29-method V5 public API compatibility**
-- ✅ RoboBall 2024 regression CI: **5/5 projects compile unchanged**
+- ✅ Dynamic brake
+- ✅ Active reverse brake / ABS
+- ✅ ABS tự cắt bằng Timer3 ISR
+- ✅ Giữ tương thích API V5 cũ
+- ✅ Ví dụ có comment chi tiết bằng tiếng Việt
+- ✅ Tài liệu động học riêng cho sinh viên
 
 ---
 
-## 🧭 Start here
-
-If you are new, follow this order:
-
-1. **Read the wheel-position diagram**
-2. **Wire Arduino Mega → L298N → motors**
-3. **Remove L298N EN jumpers**
-4. **Connect all grounds together**
-5. Upload **File → Examples → TungLam_OmniMecanum_4WD → FirstMotorTest**
-6. Verify M1, M2, M3, M4 one by one
-7. Fix any reversed motor with `setMotorInverted()`
-8. Test `forward()`
-9. Test `strafeRight()`
-10. Test rotation
-11. Only then test combined Mecanum / Omni motion
-12. Tune ABS last
-
-> ⚠️ For the first motor test, lift the robot so the wheels are not touching the floor.
-
----
-
-## 🧠 Architecture
+# 🧠 Kiến trúc thư viện
 
 ```mermaid
 flowchart LR
-    A[PS2 / Joystick / Serial / ROS2 / Autonomous] --> B[Application]
-    B --> C{Choose API}
-    C -->|Legacy project| D[TungLam_Control_MotorV5]
-    C -->|New project| E[TungLamDrive4WD]
-    D --> F[Common signed-wheel Motor HAL]
-    E --> F
-    F --> G[Safe direction transition]
-    G --> H[Timer3 + Timer4 PWM]
-    H --> I[2 x L298N]
-    I --> J[4 DC Motors]
-    F --> K[Timer3 ABS one-shot ISR]
+    A[PS2 / Joystick / ROS2 / Auto] --> B[Ứng dụng]
+    B --> C{Chọn kiểu lệnh}
+    C -->|PWM / normalized| D[drive / setWheels]
+    C -->|m/s + rad/s| E[driveVelocity]
+    E --> F[Động học nghịch]
+    F --> G[Tốc độ M1..M4]
+    G --> H[Motor model / feed-forward]
+    D --> I[Motor HAL]
+    H --> I
+    I --> J[Timer3 + Timer4]
+    J --> K[2 x L298N]
+    K --> L[4 động cơ DC]
 ```
 
-The PS2 controller is intentionally **not built into the motor core**. That keeps the library reusable with PS2, Bluetooth, ESP-NOW, RC, ROS2, vision, autonomous navigation, or any other input source.
-
 ---
 
-# 🔌 Hardware & wiring
+# 🔌 Sơ đồ bánh xe và chân nối
 
-## Required hardware
-
-| Item | Quantity |
-|---|---:|
-| Arduino Mega 2560 | 1 |
-| L298N dual H-bridge module | 2 |
-| Brushed DC motor | 4 |
-| Mecanum or Omni wheels | 4 |
-| Motor battery / supply | 1 |
-| Common ground wiring | Required |
-
-> ❌ Do **not** power four drive motors from the Arduino 5 V pin.
-
----
-
-## 🛞 Logical wheel order
-
-Top view:
+## Thứ tự bánh
 
 ```text
-                     FRONT / ĐẦU XE
-                           +vx
+                     ĐẦU XE / FRONT
+                           +X
                             ↑
 
               M1                         M3
-         FRONT-LEFT                 FRONT-RIGHT
+         TRƯỚC-TRÁI                  TRƯỚC-PHẢI
             PWM D5                     PWM D7
 
               M2                         M4
-          REAR-LEFT                  REAR-RIGHT
+          SAU-TRÁI                    SAU-PHẢI
             PWM D6                     PWM D8
 
                             ↓
-                      REAR / ĐUÔI XE
+                     ĐUÔI XE / REAR
 ```
 
-Cartesian convention:
+## Chân PWM / EN
 
-```text
-+vx  = forward
--vx  = backward
-
-+vy  = strafe left
--vy  = strafe right
-
-+wz  = rotate counter-clockwise / left
--wz  = rotate clockwise / right
-```
-
----
-
-## ⚡ Arduino Mega pin map
-
-### PWM / EN pins
-
-| Motor | Mega pin | AVR output | L298N channel |
+| Motor | Arduino Mega | AVR | L298N |
 |---|---:|---|---|
-| **M1** | D5 | PE3 / OC3A | L298N #1 ENA |
-| **M2** | D6 | PH3 / OC4A | L298N #1 ENB |
-| **M3** | D7 | PH4 / OC4B | L298N #2 ENA |
-| **M4** | D8 | PH5 / OC4C | L298N #2 ENB |
+| M1 | D5 | PE3 / OC3A | L298N #1 ENA |
+| M2 | D6 | PH3 / OC4A | L298N #1 ENB |
+| M3 | D7 | PH4 / OC4B | L298N #2 ENA |
+| M4 | D8 | PH5 / OC4C | L298N #2 ENB |
 
-### Direction pins
+## Chân chiều
 
-| Motor | Forward DIR | Reverse DIR |
+| Motor | Tiến (+) | Lùi (-) |
 |---|---:|---:|
-| **M1** | D30 / PC7 | D31 / PC6 |
-| **M2** | D32 / PC5 | D33 / PC4 |
-| **M3** | D34 / PC3 | D35 / PC2 |
-| **M4** | D37 / PC0 | D36 / PC1 |
+| M1 | D30 / PC7 | D31 / PC6 |
+| M2 | D32 / PC5 | D33 / PC4 |
+| M3 | D34 / PC3 | D35 / PC2 |
+| M4 | **D37 / PC0** | **D36 / PC1** |
 
----
+> ⚠️ M4 được quy ước **D37 là tiến, D36 là lùi**.
 
-## 🔧 L298N wiring map
+## Mass chung
 
 ```text
-ARDUINO MEGA 2560                     L298N #1
-──────────────────                    ─────────
-D5   ───────────────────────────────> ENA  ──> Motor M1
-D30  ───────────────────────────────> IN1
-D31  ───────────────────────────────> IN2
-
-D6   ───────────────────────────────> ENB  ──> Motor M2
-D32  ───────────────────────────────> IN3
-D33  ───────────────────────────────> IN4
-
-
-ARDUINO MEGA 2560                     L298N #2
-──────────────────                    ─────────
-D7   ───────────────────────────────> ENA  ──> Motor M3
-D34  ───────────────────────────────> IN1
-D35  ───────────────────────────────> IN2
-
-D8   ───────────────────────────────> ENB  ──> Motor M4
-D37  ───────────────────────────────> IN1
-D36  ───────────────────────────────> IN2
-
-
-POWER
-─────
-Battery (+) ───────────────> Motor supply input on both L298N modules
-
-Battery (-) ───────┬───────> GND L298N #1
-                   ├───────> GND L298N #2
-                   └───────> GND Arduino Mega
+GND Arduino Mega
+      │
+      ├──── GND L298N #1
+      ├──── GND L298N #2
+      └──── âm nguồn động cơ
 ```
 
-### Important L298N notes
+> Không cấp nguồn cho 4 động cơ từ chân 5V của Arduino.
 
-- Remove the **ENA / ENB jumpers** when Arduino PWM drives those pins.
-- Arduino GND, both L298N GND pins, and motor-supply negative must share a **common ground**.
-- Do not assume every L298N module has the same onboard 5 V regulator wiring.
-- Do not power the motors from the Arduino 5 V rail.
-- Start testing at low PWM such as **60–80**.
-- L298N has a relatively large voltage drop and can become hot under high current.
-
-Detailed notes: **[extras/WIRING.md](extras/WIRING.md)**
+Tài liệu chi tiết: **[extras/WIRING.md](extras/WIRING.md)**
 
 ---
 
-# 🚀 Installation
+# 📦 Cài đặt từ Arduino IDE
 
-## Option 1 — Arduino Library Manager
-
-In Arduino IDE:
+Vào:
 
 ```text
 Sketch
-  → Include Library
-  → Manage Libraries...
+→ Include Library
+→ Manage Libraries...
 ```
 
-Search:
+Tìm:
 
 ```text
 TungLam_OmniMecanum_4WD
 ```
 
-Then click **Install**.
-
-> If the newest version is not visible yet, the Arduino registry may still be indexing the latest tag.
-
-## Option 2 — Install ZIP
-
-1. Download this repository as ZIP.
-2. Open Arduino IDE.
-3. Select **Sketch → Include Library → Add .ZIP Library...**
-4. Select the ZIP file.
-5. Open **File → Examples → TungLam_OmniMecanum_4WD**.
+Sau đó chọn phiên bản mới nhất và nhấn **Install**.
 
 ---
 
-# 🧪 First power-on test
+# 💡 Gợi ý hàm bằng tiếng Việt trong Arduino IDE
 
-Use the included example:
+Thư viện được viết để học sinh có thể **gõ code và học ngay từ phần gợi ý của IDE**.
+
+Với Arduino IDE 2.x, sau khi tạo:
+
+```cpp
+TungLamDrive4WD robot;
+```
+
+hãy thử gõ:
+
+```cpp
+robot.
+```
+
+IDE sẽ gợi ý các hàm public như:
+
+```text
+forward(...)
+backward(...)
+drive(...)
+driveVelocity(...)
+setWheels(...)
+ABS(...)
+inverseKinematics(...)
+...
+```
+
+Các hàm trong header chính đều có **Doxygen comment tiếng Việt** ngay trước declaration. Khi chọn hàm, xem signature help hoặc hover lên tên hàm, bạn có thể thấy mô tả kiểu:
+
+```cpp
+robot.driveVelocity(0.40f, 0.10f, 0.50f);
+```
+
+Ý nghĩa được ghi ngay trong API:
+
+```text
+vxMps   : vận tốc X [m/s], dương = tiến
+vyMps   : vận tốc Y [m/s], dương = trái
+wzRadps : tốc độ quay Z [rad/s], dương = CCW/trái
+
+Nếu yêu cầu vượt khả năng model:
+→ thư viện tự scale tốc độ 4 bánh để giữ tỷ lệ động học.
+```
+
+Ví dụ với:
+
+```cpp
+robot.setMotorInverted(3, true);
+```
+
+IDE có thể đọc từ header:
+
+```text
+Đảo chiều logic riêng một motor mà không sửa phương trình động học.
+
+wheel:
+1 = M1 trước-trái
+2 = M2 sau-trái
+3 = M3 trước-phải
+4 = M4 sau-phải
+
+inverted:
+true  = đảo chiều
+false = chiều mặc định
+```
+
+> `keywords.txt` chủ yếu dùng cho tô màu cú pháp. Phần giải thích hàm/parameter được đặt trong Doxygen comment của `src/TungLam_OmniMecanum_4WD.h` để Arduino Language Server có thể đọc khi code completion/hover.
+
+Nếu vừa cập nhật thư viện nhưng IDE chưa hiện mô tả mới, hãy đóng/mở lại sketch hoặc khởi động lại Arduino IDE để language server index lại header.
+
+---
+
+# 🧪 Bài test đầu tiên: FirstMotorTest
+
+Mở:
 
 ```text
 File
@@ -269,35 +262,26 @@ File
 → FirstMotorTest
 ```
 
-The example tests:
+Ví dụ sẽ chạy lần lượt:
 
 ```text
-M1 forward → M1 reverse
-M2 forward → M2 reverse
-M3 forward → M3 reverse
-M4 forward → M4 reverse
+M1 tiến → M1 lùi
+M2 tiến → M2 lùi
+M3 tiến → M3 lùi
+M4 tiến → M4 lùi
 ```
 
-### Expected physical placement
-
-| Motor ID | Position |
-|---|---|
-| M1 | Front-left |
-| M2 | Rear-left |
-| M3 | Front-right |
-| M4 | Rear-right |
-
-If one motor spins backward relative to the logical direction:
+Nếu một động cơ quay ngược logic:
 
 ```cpp
 robot.setMotorInverted(3, true);
 ```
 
-Do not immediately edit the mixer equations.
+Nên sửa bằng `setMotorInverted()` thay vì sửa bừa phương trình động học.
 
 ---
 
-# ⚡ Quick start — Modern API
+# 🚀 Dùng API hiện đại
 
 ```cpp
 #include <TungLam_OmniMecanum_4WD.h>
@@ -316,98 +300,223 @@ void loop() {
 
 ---
 
-## Mecanum vector control
+# 🎮 Các lệnh cơ bản
 
-> **v0.9 migration note:** the modern Cartesian signs are now standardized. In v0.8.x, positive `vy` meant right and positive `wz` meant clockwise. In v0.9+, positive `vy` means **left** and positive `wz` means **counter-clockwise**. Named helpers such as `strafeRight()` and `rotateRight()` keep their physical meaning.
+```cpp
+robot.forward(150);       // tiến
+robot.backward(150);      // lùi
+
+robot.strafeLeft(150);    // ngang trái
+robot.strafeRight(150);   // ngang phải
+
+robot.rotateLeft(120);    // quay trái / CCW
+robot.rotateRight(120);   // quay phải / CW
+
+robot.stop();             // dừng kiểu coast
+```
+
+---
+
+# 🧭 Hệ tọa độ chuẩn của API modern
+
+```text
+                 +X / +vx
+                    ↑
+                    |
+        +Y / +vy ← ROBOT
+
++Z hướng lên khỏi mặt robot
+
++wz = quay trái / CCW
+-wz = quay phải / CW
+```
+
+Tức là:
+
+```text
++vx = tiến
+-vx = lùi
+
++vy = trái
+-vy = phải
+
++wz = quay trái / CCW
+-wz = quay phải / CW
+```
+
+> Từ v0.9.0 trở đi, modern Cartesian API dùng convention này. Các hàm tên rõ nghĩa như `strafeRight()`, `rotateRight()` vẫn giữ đúng hướng vật lý.
+
+---
+
+# 🎯 Điều khiển normalized với vx, vy, wz
 
 ```cpp
 robot.drive(vx, vy, wz);
 ```
 
-Example:
+Ví dụ:
 
 ```cpp
-robot.drive(160, 0, 0);     // forward (+vx)
-robot.drive(0, 160, 0);     // strafe left (+vy)
-robot.drive(0, 0, 120);     // rotate left / CCW (+wz)
-robot.drive(150, -100, 0);  // forward-right (+vx, -vy)
+robot.drive(160, 0, 0);      // tiến
+robot.drive(0, 160, 0);      // ngang trái
+robot.drive(0, 0, 120);      // quay trái / CCW
+robot.drive(150, -100, 0);   // tiến-phải
 ```
 
-The modern Mecanum mixer is intentionally aligned with the proven V5 motion basis:
+Với Mecanum-X:
 
-| Motion | M1 | M2 | M3 | M4 |
+| Chuyển động | M1 | M2 | M3 | M4 |
 |---|---:|---:|---:|---:|
-| Forward | + | + | + | + |
-| Backward | - | - | - | - |
-| Strafe left (+vy) | - | + | - | + |
-| Strafe right (-vy) | + | - | + | - |
-| Rotate left / CCW (+wz) | - | - | + | + |
-| Rotate right / CW (-wz) | + | + | - | - |
-| Forward-right | + | 0 | + | 0 |
-| Forward-left | 0 | + | 0 | + |
-| Backward-right | 0 | - | 0 | - |
-| Backward-left | - | 0 | - | 0 |
-
-When a combined vector exceeds PWM 255, all wheels are scaled proportionally so the motion direction is preserved.
+| +vx tiến | + | + | + | + |
+| -vx lùi | - | - | - | - |
+| +vy trái | - | + | - | + |
+| -vy phải | + | - | + | - |
+| +wz CCW | - | - | + | + |
+| -wz CW | + | + | - | - |
 
 ---
 
-# 📐 SI kinematics and physical robot model
+# 📐 Khai báo động cơ và kích thước đế
 
-For simple robots you can keep using PWM commands such as:
-
-```cpp
-robot.forward(150);
-robot.drive(150, 0, 0);
-```
-
-For robotics/controls work, v0.9 adds a physical model so the command can use **m/s** and **rad/s**.
-
-Declare the motor and chassis once:
+Đây là phần dành cho học sinh/sinh viên muốn tiếp cận đúng động học vật lý.
 
 ```cpp
 TungLamDriveConfig model(
-    12.0f,   // motor nominal voltage [V]
-    300.0f,  // gearbox/output no-load RPM at nominal voltage
-    12.0f,   // motor supply voltage [V]
-    0.050f,  // wheel radius [m]
-    0.320f,  // wheelbase: front-centre to rear-centre [m]
-    0.280f,  // track width: left-centre to right-centre [m]
-    0.85f    // empirical open-loop speed correction
+    12.0f,   // điện áp định mức động cơ [V]
+    300.0f,  // RPM đầu ra hộp số ở điện áp định mức
+    12.0f,   // điện áp nguồn cấp cho driver [V]
+    0.050f,  // bán kính bánh [m]
+    0.320f,  // khoảng cách tâm bánh trước - sau [m]
+    0.280f,  // khoảng cách tâm bánh trái - phải [m]
+    0.85f    // hệ số hiệu chỉnh vòng hở
 );
 
 robot.setDriveConfig(model);
 ```
 
-Then command body velocity directly:
+Giải thích:
+
+```text
+motorNominalVoltageV  = điện áp danh định của motor
+motorNoLoadRpm        = RPM đầu ra hộp số tại điện áp danh định
+supplyVoltageV        = điện áp thực cấp cho driver
+wheelRadiusM          = bán kính lăn của bánh
+wheelbaseM            = tâm bánh trước tới tâm bánh sau
+trackWidthM           = tâm bánh trái tới tâm bánh phải
+speedScale            = hệ số hiệu chỉnh thực nghiệm
+```
+
+---
+
+# 📏 Điều khiển theo m/s và rad/s
+
+Sau khi đã khai báo model:
 
 ```cpp
 robot.driveVelocity(
-    0.40f,  // vx [m/s] forward
-    0.10f,  // vy [m/s] left
-    0.50f   // wz [rad/s] CCW
+    0.40f,  // vx: tiến 0.40 m/s
+    0.10f,  // vy: sang trái 0.10 m/s
+    0.50f   // wz: quay CCW 0.50 rad/s
 );
 ```
 
-The library automatically performs:
+Luồng xử lý:
 
 ```text
-body velocity [vx, vy, wz]
-            ↓
-inverse kinematics
-            ↓
-wheel linear velocity [m/s]
-            ↓
-motor RPM / supply-voltage model
-            ↓
-proportional wheel-speed limiting
-            ↓
-open-loop PWM
-            ↓
-safe motor HAL
+vx, vy, wz
+   ↓
+động học nghịch
+   ↓
+vận tốc M1..M4 [m/s]
+   ↓
+giới hạn theo khả năng bánh
+   ↓
+motor model
+   ↓
+PWM vòng hở
+   ↓
+Motor HAL
 ```
 
-Useful calculated limits:
+> ⚠️ Không có encoder thì đây vẫn là **feed-forward vòng hở**. Thư viện chỉ ước lượng PWM theo model; không thể đảm bảo vận tốc đo thực tế chính xác tuyệt đối.
+
+---
+
+# 🚧 Nếu yêu cầu vận tốc quá lớn thì sao?
+
+Thư viện xử lý ở tầng **vận tốc bánh**, không clamp riêng từng `vx`, `vy`, `wz`.
+
+Ví dụ động học tính ra:
+
+```text
+M1 = 1.20 m/s
+M2 = 0.80 m/s
+M3 = 1.50 m/s
+M4 = 1.10 m/s
+```
+
+nhưng bánh chỉ đạt tối đa:
+
+```text
+1.00 m/s
+```
+
+thì toàn bộ vector sẽ được scale:
+
+```text
+scale = 1.00 / 1.50
+```
+
+rồi nhân cho cả 4 bánh.
+
+Cách này giữ đúng tỷ lệ chuyển động và hạn chế méo hướng.
+
+---
+
+# 🧮 Inverse kinematics
+
+```cpp
+TungLamWheelVelocity wheels =
+    robot.inverseKinematics(
+        0.40f,
+        0.10f,
+        0.50f
+    );
+```
+
+Kết quả:
+
+```cpp
+wheels.m1Mps;
+wheels.m2Mps;
+wheels.m3Mps;
+wheels.m4Mps;
+```
+
+---
+
+# 🔁 Forward kinematics
+
+```cpp
+TungLamBodyVelocity body =
+    robot.forwardKinematics(wheels);
+```
+
+Kết quả:
+
+```cpp
+body.vxMps;
+body.vyMps;
+body.wzRadps;
+```
+
+Đây là phần rất hữu ích cho encoder, odometry và ROS2 sau này.
+
+Tài liệu toán chi tiết: **[extras/KINEMATICS.md](extras/KINEMATICS.md)**
+
+---
+
+# ⚙️ Các giá trị lý thuyết có thể đọc từ model
 
 ```cpp
 robot.estimatedMotorRpmAtSupply();
@@ -416,119 +525,45 @@ robot.maxBodyLinearSpeedMps();
 robot.maxYawRateRadps();
 ```
 
-You can also study the mathematics directly:
+---
+
+# 🛑 Các chế độ dừng / hãm
+
+## Coast
 
 ```cpp
-TungLamWheelVelocity wheels =
-    robot.inverseKinematics(vx, vy, wz);
-
-TungLamBodyVelocity body =
-    robot.forwardKinematics(wheels);
+robot.stop();
 ```
 
-> ⚠️ **Important:** without wheel encoders, `driveVelocity()` is open-loop feed-forward. The RPM/voltage model estimates PWM; it cannot guarantee measured speed under load. `speedScale` exists for empirical calibration.
+PWM về 0.
 
-This SI layer is intentionally ready for future control work:
+## Dynamic brake
 
-```text
-IMU heading PID
-      ↓
-wz correction [rad/s]
-      ↓
-driveVelocity(vx_mps, vy_mps, wz_radps)
+```cpp
+robot.dynamicBrake();
 ```
 
-and future encoder control:
+Dùng trạng thái điện của H-bridge để ghìm motor.
 
-```text
-inverse kinematics
-      ↓
-wheel target speed
-      ↓
-wheel PID + encoder feedback
-      ↓
-PWM
+## Active reverse brake / ABS
+
+```cpp
+robot.ABS(180);
 ```
 
-See **[Kinematics, SI velocity, and open-loop motor model](extras/KINEMATICS.md)** for the equations and learning path.
+Thư viện tạo mô-men ngược trong khoảng thời gian ngắn rồi Timer3 ISR tự ngắt.
+
+Có thể chỉnh bảng thời gian:
+
+```cpp
+robot.setTimABS(45, 65, 70, 75, 80, 85);
+```
+
+> ⚠️ ABS có thể tạo dòng lớn và gây nóng L298N, sụt áp pin, trượt bánh hoặc sốc cơ khí. Cần tune thực tế.
 
 ---
 
-## Omni X-drive
-
-```cpp
-robot.setChassis(TungLamChassis::OmniX);
-
-robot.drive(150, 0, 0);   // +vx forward
-robot.drive(0, 150, 0);   // +vy left
-robot.drive(0, 0, 120);   // +wz CCW
-```
-
-Omni mechanical layouts vary more than Mecanum chassis. Always commission each wheel at low PWM first.
-
----
-
-# 🎮 Using a PS2 controller
-
-The motor library does **not** require PS2X. PS2 is an optional input layer.
-
-```text
-PS2 controller
-     ↓
-PS2X_lib
-     ↓
-your application logic
-     ↓
-TungLam_OmniMecanum_4WD
-     ↓
-motors
-```
-
-Minimal integration idea:
-
-```cpp
-#include <PS2X_lib.h>
-#include <TungLam_OmniMecanum_4WD.h>
-
-PS2X ps2x;
-TungLamDrive4WD robot;
-
-void setup() {
-  robot.begin();
-  robot.setChassis(TungLamChassis::MecanumX);
-
-  // Configure PS2X pins here using your own wiring.
-}
-
-void loop() {
-  ps2x.read_gamepad();
-
-  int16_t vx = 0;
-  int16_t vy = 0;
-  int16_t wz = 0;
-
-  // Convert PS2 sticks/buttons into vx, vy, wz here.
-
-  robot.drive(vx, vy, wz);
-}
-```
-
-This separation keeps the drive library usable with:
-
-- PS2
-- Bluetooth
-- ESP-NOW
-- RC receiver
-- Serial commands
-- ROS2
-- Computer vision
-- Autonomous navigation
-
----
-
-# 🧱 Legacy V5 compatibility
-
-Old sketches can keep:
+# 🧱 API V5 cũ vẫn dùng được
 
 ```cpp
 #include <TungLam_Control_MotorV5.h>
@@ -536,438 +571,158 @@ Old sketches can keep:
 TungLam_Control_MotorV5 robot;
 ```
 
-The original public API is preserved:
+Các hàm cũ như:
 
-<details>
-<summary><b>Show the complete V5-compatible API</b></summary>
-
-```text
-Mode0()
-Mode1()
-Init_Timer1()
-Init_Timer2()
-
-STOP()
-
-moveForward()
-moveBackward()
-Forward_Right()
-Backward_Right()
-Forward_Left()
-Backward_Left()
-moveRight()
-moveLeft()
-moveLeftSide()
-moveRightSide()
-
-Dir()
-
-Tien()
-Lui()
-Trai()
-Phai()
-T_Trai()
-T_Phai()
-L_Trai()
-L_Phai()
-N_Trai()
-N_Phai()
-
-ABS()
-setTimABS()
+```cpp
+robot.Tien(...);
+robot.Lui(...);
+robot.Phai(...);
+robot.Trai(...);
+robot.N_Phai(...);
+robot.N_Trai(...);
+robot.ABS(...);
+robot.setTimABS(...);
 ```
 
-</details>
-
-The compatibility layer now executes normal motor commands through the same safe motor HAL used by the modern API.
+vẫn được giữ để project cũ không phải viết lại.
 
 ---
 
-# 🛑 Braking modes
+# 🎮 Tích hợp tay cầm PS2
 
-## 1. Coast
+Thư viện đế không phụ thuộc PS2X.
 
-```cpp
-robot.stop();
+```text
+PS2
+ ↓
+PS2X_lib
+ ↓
+logic joystick
+ ↓
+vx, vy, wz
+ ↓
+TungLam_OmniMecanum_4WD
+ ↓
+đế robot
 ```
 
-PWM goes to zero and the motors coast.
-
-## 2. L298N dynamic brake
-
-```cpp
-robot.dynamicBrake();
-```
-
-Both H-bridge direction inputs are driven to the same state while EN remains active, electrically damping the motor.
-
-## 3. Active reverse brake / ABS
-
-```cpp
-robot.ABS(180);
-```
-
-This intentionally applies reverse torque for a short configured interval.
-
-```mermaid
-flowchart LR
-    A[Robot moving] --> B[ABS duty]
-    B --> C[PWM = 0]
-    C --> D[direction dead-time]
-    D --> E[reverse torque]
-    E --> F[Timer3 overflow one-shot]
-    F --> G[hardware STOP]
-```
-
-The requested `duty` is the actual reverse-brake PWM.
-
-Default timing table:
-
-| Previous motion time | ABS pulse |
-|---:|---:|
-| < 500 ms | 45 ms |
-| < 1000 ms | 65 ms |
-| < 1500 ms | 70 ms |
-| < 2000 ms | 75 ms |
-| < 3000 ms | 80 ms |
-| ≥ 3000 ms | 85 ms |
-
-Custom timing:
-
-```cpp
-robot.setTimABS(45, 65, 70, 75, 80, 85);
-```
-
-### Why the new ABS is safer
-
-The old V5 concept used blocking timing.
-
-The current implementation uses **Timer3 overflow ISR**, so the reverse pulse is cut off even if normal `loop()` execution is delayed.
-
-> ⚠️ Active reverse braking can create high motor current, battery sag, gearbox shock, wheel slip, and L298N heating. Tune brake duty and pulse time conservatively.
+Tách như vậy giúp thư viện dùng được với PS2, Bluetooth, ESP-NOW, RC, ROS2, tự hành hoặc camera/vision.
 
 ---
 
-# 🔄 Safe direction changes
+# 🧩 Ví dụ đi kèm
 
-Every common HAL transition follows:
-
-```text
-current PWM
-    ↓
-PWM = 0
-    ↓
-dead-time
-    ↓
-DIR update
-    ↓
-new PWM
-```
-
-Default dead-time:
-
-```text
-100 µs
-```
-
-Change it if required:
-
-```cpp
-robot.setDirectionDeadTimeUs(150);
-```
-
----
-
-# 🎚 Direct wheel control
-
-Use this when you already have your own kinematics:
-
-```cpp
-robot.setWheels(
-  +180,  // M1
-  -120,  // M2
-  +180,  // M3
-  -120   // M4
-);
-```
-
-Convention:
-
-```text
-positive value = logical forward
-negative value = logical reverse
-0              = stop that wheel
-magnitude      = PWM 0..255
-```
-
----
-
-# 🔧 Motor inversion
-
-If one physical motor is mounted or wired in the opposite direction:
-
-```cpp
-robot.setMotorInverted(3, true);
-```
-
-This is preferred over scattering sign changes through your application code.
-
----
-
-# ⏱ PWM modes
-
-High-frequency mode:
-
-```cpp
-robot.begin(TungLamPwmMode::High7k8Hz);
-```
-
-Approximate PWM frequency:
-
-```text
-7.8125 kHz
-```
-
-Legacy-compatible low-frequency mode:
-
-```cpp
-robot.begin(TungLamPwmMode::Low976Hz);
-```
-
-Approximate frequency:
-
-```text
-976.56 Hz
-```
-
-For most L298N + DC motor applications, start with **High7k8Hz**.
-
----
-
-# 🧩 Examples included
-
-| Example | Purpose |
+| Ví dụ | Mục đích |
 |---|---|
-| **FirstMotorTest** | First-time wiring and polarity commissioning |
-| **BasicMotion** | Basic legacy-compatible motion |
-| **MecanumDrive** | Modern Mecanum control |
-| **OmniXDrive** | Modern Omni X-drive |
-| **PerWheelControl** | Direct signed M1..M4 control |
-| **MetricKinematics** | Motor/chassis config, SI m/s + rad/s, inverse/forward kinematics |
-| **ActiveBrake** | ABS / reverse braking |
-| **ActiveBrakeNonBlocking** | Non-blocking brake demonstration |
-| **LegacyV5DropIn** | Old V5 include/class compatibility |
-| **LegacyApiNewHeader** | Legacy class through new main header |
-| **LegacyApiSurface** | Compile regression for the full V5 API |
+| **FirstMotorTest** | Kiểm tra M1..M4 và chiều quay |
+| **BasicMotion** | Chuyển động cơ bản kiểu V5 |
+| **MecanumDrive** | Dùng modern Mecanum |
+| **OmniXDrive** | Dùng Omni X-drive |
+| **PerWheelControl** | Điều khiển trực tiếp từng bánh |
+| **MetricKinematics** | Khai báo motor/chassis, m/s, rad/s, IK/FK |
+| **ActiveBrake** | ABS |
+| **ActiveBrakeNonBlocking** | ABS không block chương trình |
+| **LegacyV5DropIn** | Giữ nguyên code V5 |
+| **LegacyApiNewHeader** | Dùng V5 qua header mới |
+| **LegacyApiSurface** | Kiểm tra toàn bộ API legacy |
 
----
+Mặc định các ví dụ trong `examples/` dùng **comment tiếng Việt**.
 
-# 🧰 Troubleshooting
-
-<details>
-<summary><b>Robot goes backward when I command forward</b></summary>
-
-Test each wheel with **FirstMotorTest**.
-
-If only one motor is reversed:
-
-```cpp
-robot.setMotorInverted(wheelNumber, true);
-```
-
-If all four are reversed, review your motor polarity and logical chassis orientation.
-
-</details>
-
-<details>
-<summary><b>Robot moves forward but cannot strafe correctly</b></summary>
-
-Check:
-
-1. M1/M2/M3/M4 physical position
-2. motor polarity
-3. Mecanum wheel mechanical orientation
-4. EN jumpers are removed
-5. all four PWM outputs are connected
-6. no motor is mechanically binding
-
-Do not compensate for a wiring problem by randomly editing the mixer equations.
-
-</details>
-
-<details>
-<summary><b>Motor only runs at full speed</b></summary>
-
-The ENA/ENB jumper is probably still installed on the L298N.
-
-Remove the jumper and connect the corresponding EN pin to Arduino D5/D6/D7/D8.
-
-</details>
-
-<details>
-<summary><b>Motor direction is unstable or Arduino resets</b></summary>
-
-Check:
-
-- common ground
-- motor battery current capacity
-- loose screw terminals
-- L298N overheating
-- battery voltage sag
-- motor noise / EMI
-- supply wiring thickness
-
-Keep high motor current away from the Arduino logic-power path.
-
-</details>
-
-<details>
-<summary><b>ABS is too aggressive</b></summary>
-
-Reduce either:
+Bản comment tiếng Anh được lưu tại:
 
 ```text
-ABS duty
-```
-
-or the values passed to:
-
-```cpp
-setTimABS(...)
-```
-
-Start conservatively.
-
-</details>
-
-<details>
-<summary><b>Arduino says multiple libraries found for TungLam_Control_MotorV5.h</b></summary>
-
-Remove the old manually installed V5 folder from your Arduino libraries directory.
-
-The current library already contains the V5 compatibility header.
-
-</details>
-
----
-
-# ⚠️ Resource ownership
-
-The drive subsystem owns:
-
-```text
-D5 / Timer3 OC3A
-D6 / Timer4 OC4A
-D7 / Timer4 OC4B
-D8 / Timer4 OC4C
-
-D30..D37 / PORTC
-
-Timer3 overflow interrupt during ABS
-```
-
-Use **one motor-controller API path per Arduino Mega**:
-
-```text
-either TungLam_Control_MotorV5
-or     TungLamDrive4WD
-```
-
-Do not instantiate both to control the same motor hardware at the same time.
-
-Other libraries that reconfigure Timer3 or Timer4 may conflict.
-
----
-
-# ✅ Compatibility & CI
-
-Every push and pull request is checked by GitHub Actions.
-
-Current gates:
-
-```text
-Arduino Mega compile        PASS
-Arduino Lint strict         PASS
-RoboBall 2024 regression    5/5 PASS
-```
-
-The regression suite compiles the original RoboBall 2024 projects unchanged against the current library.
-
-Pinned CI environment:
-
-```text
-Arduino CLI      1.5.1
-Arduino AVR      1.8.8
-Servo            1.3.0
-RoboBall repo    pinned commit
-PS2X             pinned commit
-Ubuntu runner    24.04
+extras/examples-en/
 ```
 
 ---
 
-# 📁 Repository layout
+# 🔮 Hướng mở rộng đã chuẩn bị sẵn
+
+## Encoder velocity PID
 
 ```text
-TungLam-OmniMecanum-4WD/
-├── src/
-│   ├── TungLam_OmniMecanum_4WD.h
-│   ├── TungLam_OmniMecanum_4WD.cpp
-│   └── TungLam_Control_MotorV5.h
-├── examples/
-│   ├── FirstMotorTest/
-│   ├── MecanumDrive/
-│   ├── OmniXDrive/
-│   ├── PerWheelControl/
-│   ├── ActiveBrake/
-│   └── legacy compatibility examples...
-├── extras/
-│   └── WIRING.md
-├── .github/
-│   ├── workflows/
-│   └── actions/
-├── library.properties
-├── keywords.txt
-├── CHANGELOG.md
-├── LICENSE
-└── README.md
+vx,vy,wz target
+      ↓
+inverse kinematics
+      ↓
+wheel speed target
+      ↓
+PID từng bánh ← encoder
+      ↓
+PWM
+```
+
+## IMU giữ hướng
+
+```text
+yaw target
+   ↓
+IMU yaw
+   ↓
+heading PID
+   ↓
+wz correction [rad/s]
+   ↓
+driveVelocity(vx, vy, wz)
+```
+
+## ROS2
+
+Có thể map trực tiếp:
+
+```text
+cmd_vel.linear.x  → vx [m/s]
+cmd_vel.linear.y  → vy [m/s]
+cmd_vel.angular.z → wz [rad/s]
 ```
 
 ---
 
-# 📌 Version philosophy
+# ⚠️ Tài nguyên phần cứng thư viện sử dụng
 
-- **0.5.x** — packaged V5 baseline
-- **0.6.x** — modern holonomic core
-- **0.7.x** — drop-in V5 compatibility + source cleanup
-- **0.8.0** — common safe HAL + V5-parity Mecanum + hardware-timed ABS
-- **0.8.1** — pre-1.0 cleanup and reproducible regression CI
-- **0.8.2** — documentation/newbie onboarding + first motor commissioning example
-- **1.0.0** — reserved for the stable milestone
+```text
+Timer3 → M1 PWM + ABS timing
+Timer4 → M2/M3/M4 PWM
+PORTC  → D30..D37 direction
+```
+
+Không nên để thư viện khác cấu hình lại Timer3/Timer4 cùng lúc.
 
 ---
 
-# 📚 More documentation
+# ✅ Kiểm thử CI
 
-- **[Wiring and chassis conventions](extras/WIRING.md)**
-- **[Kinematics, SI velocity, and open-loop motor model](extras/KINEMATICS.md)**
-- **[Changelog](CHANGELOG.md)**
-- **[Examples](examples/)**
+Mỗi thay đổi được kiểm tra bằng:
+
+```text
+Arduino Mega compile
+Arduino Lint
+RoboBall 2024 legacy regression
+```
+
+Legacy RoboBall hiện vẫn được dùng làm regression để tránh phá project cũ.
+
+---
+
+# 📚 Tài liệu
+
+- 🇻🇳 **[README tiếng Việt](README.md)**
+- 🌐 **[README English](README.en.md)**
+- 🇻🇳 **[Đấu nối phần cứng](extras/WIRING.md)**
+- 🌐 **[Wiring guide English](extras/WIRING.en.md)**
+- 🇻🇳 **[Động học và SI velocity](extras/KINEMATICS.md)**
+- 🌐 **[Kinematics English](extras/KINEMATICS.en.md)**
+- **[CHANGELOG](CHANGELOG.md)**
 
 ---
 
 <div align="center">
 
-## 👨‍💻 Author
+## 👨‍💻 Nguyễn Khắc Tùng Lâm
 
-**Nguyễn Khắc Tùng Lâm**<br>
-DHTD16A2CL<br>
+DHTD16A2CL
 **Tung Lâm Automation**
 
-Built from the original V5 robot-control library and evolved into a reusable 4WD holonomic motor-control platform.
-
-### ⭐ If this library helps your robot project, consider starring the repository.
-
-**MIT License**
+Thư viện được phát triển từ bộ điều khiển V5 đã dùng cho robot thực tế, sau đó mở rộng thành nền tảng drive-base cho Mecanum/Omni, học tập động học và các bài toán robotics nâng cao.
 
 </div>

@@ -1,40 +1,40 @@
 /**
  * @file OmniXDrive.ino
- * @brief Minimal modern four-wheel Omni X-drive example.
+ * @brief Ví dụ tối thiểu dùng modern API cho đế Omni X-drive 4 bánh.
  *
- * Coordinate convention:
- * - +vx = forward
- * - +vy = left
- * - +wz = counter-clockwise/left rotation
+ * Hệ tọa độ:
+ * - +vx = tiến
+ * - +vy = trái
+ * - +wz = quay trái / CCW
  *
- * Omni mechanical layouts vary, so verify M1..M4 using FirstMotorTest before
- * relying on combined X-drive motion.
+ * Omni có nhiều kiểu bố trí cơ khí. Hãy dùng FirstMotorTest để xác nhận M1..M4
+ * và polarity trước khi chạy chuyển động X-drive tổng hợp.
  */
 
-// Import the modern 4WD API.
+// Nạp modern 4WD API.
 #include <TungLam_OmniMecanum_4WD.h>
 
-// Create one modern controller for the four-wheel drive hardware.
+// Tạo một controller cho đế 4 bánh.
 TungLamDrive4WD robot;
 
 void setup() {
-  // Initialize the motor pins and the recommended ~7.8125 kHz PWM mode.
+  // Khởi tạo chân motor và PWM khoảng 7,8125 kHz.
   robot.begin(TungLamPwmMode::High7k8Hz);
 
-  // Select the Omni-X mixer used by drive(vx, vy, wz).
+  // Chọn mixer Omni-X cho drive(vx, vy, wz).
   robot.setChassis(TungLamChassis::OmniX);
 }
 
 void loop() {
-  // Optional high-level state synchronization after a hardware-timed brake pulse.
+  // Đồng bộ state phần mềm sau các xung hãm hardware-timed nếu có.
   robot.update();
 
-  // Command combined forward and left translation with no rotation:
-  // vx=140 -> forward component
-  // vy=80  -> left component (+Y)
-  // wz=0   -> no rotational component
+  // Ra lệnh vừa tiến vừa sang trái, không quay:
+  // vx=140 -> thành phần tiến
+  // vy=80  -> thành phần sang trái (+Y)
+  // wz=0   -> không có thành phần quay
   robot.drive(140, 80, 0);
 
-  // The normalized Omni-X mixer follows the documented canonical 45-degree
-  // wheel-axis model. For physical SI commands use driveVelocity().
+  // Mixer Omni-X normalized dùng mô hình canonical với trục lăn 45 độ.
+  // Nếu muốn dùng m/s và rad/s thì chuyển sang driveVelocity().
 }

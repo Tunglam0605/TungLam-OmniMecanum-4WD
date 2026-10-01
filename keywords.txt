@@ -70,3 +70,17 @@ maxYawRateRadps	KEYWORD2
 inverseKinematics	KEYWORD2
 forwardKinematics	KEYWORD2
 driveVelocity	KEYWORD2
+motorNominalVoltageV	KEYWORD2
+motorNoLoadRpm	KEYWORD2
+supplyVoltageV	KEYWORD2
+wheelRadiusM	KEYWORD2
+wheelbaseM	KEYWORD2
+trackWidthM	KEYWORD2
+speedScale	KEYWORD2
+m1Mps	KEYWORD2
+m2Mps	KEYWORD2
+m3Mps	KEYWORD2
+m4Mps	KEYWORD2
+vxMps	KEYWORD2
+vyMps	KEYWORD2
+wzRadps	KEYWORD2

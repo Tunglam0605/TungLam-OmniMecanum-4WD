@@ -7,6 +7,20 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.9.1] - 2026-10-01
+
+### Vietnamese-first localization
+- Made the default README, wiring guide, kinematics guide, Arduino examples, public header comments, compatibility header comments, and implementation comments Vietnamese-first for Vietnamese students and learners.
+- Added `README.en.md`, `extras/WIRING.en.md`, `extras/KINEMATICS.en.md`, `extras/examples-en/`, and `extras/source-en/` as international English references.
+- Kept API names and executable logic language-neutral; localization changes comments/documentation only.
+- Added explicit language navigation between Vietnamese and English documentation.
+- Added localization parity validation so Vietnamese and English source/example views must have identical executable/declaration code after comments and whitespace are removed.
+- Expanded Vietnamese Doxygen `@brief`, `@param`, `@return`, enum and struct-member documentation so Arduino IDE 2.x code-completion/signature-help/hover can explain what each public API does while students type.
+- Expanded `keywords.txt` to highlight SI configuration and velocity fields such as `wheelRadiusM`, `wheelbaseM`, `vxMps`, `vyMps`, and `wzRadps`.
+
+### Compatibility
+- No motor-control, kinematics, ABS, timer, pin-map, SI model, Legacy V5, or public API behavior change from v0.9.0.
+
 ## [0.9.0] - 2026-10-01
 
 ### Standard body-frame convention
