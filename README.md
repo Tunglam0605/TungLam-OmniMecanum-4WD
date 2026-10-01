@@ -690,6 +690,24 @@ Không nên để thư viện khác cấu hình lại Timer3/Timer4 cùng lúc.
 
 ---
 
+# 🧾 API help coverage
+
+Từ v0.9.2, public API được audit đầy đủ:
+
+```text
+Legacy V5   : 29/29 hàm có mô tả tiếng Việt
+Modern API  : 36/36 hàm có mô tả tiếng Việt
+Tổng        : 65/65
+
+@brief  : đầy đủ
+@param  : đầy đủ cho mọi hàm có tham số
+@return : đầy đủ cho mọi hàm có giá trị trả về
+```
+
+Mục tiêu là khi học sinh/sinh viên gõ code trong Arduino IDE 2.x, phần completion/hover/signature help có đủ ngữ cảnh để hiểu hàm đang làm gì và từng tham số có ý nghĩa gì.
+
+---
+
 # ✅ Kiểm thử CI
 
 Mỗi thay đổi được kiểm tra bằng:

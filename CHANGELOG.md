@@ -7,6 +7,17 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.9.2] - 2026-10-01
+
+### Complete Arduino IDE API hints
+- Completed Vietnamese Doxygen parameter documentation for all remaining Legacy V5 directional helpers.
+- Verified every public function in both APIs has a Vietnamese `@brief`; every function with parameters has `@param`; every non-void function has `@return`.
+- Public API documentation coverage is now 65/65 functions: 29 Legacy V5 + 36 Modern API.
+- Synchronized the corresponding English source-reference comments.
+
+### Compatibility
+- Documentation-only patch; no executable behavior change from v0.9.1.
+
 ## [0.9.1] - 2026-10-01
 
 ### Vietnamese-first localization

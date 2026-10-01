@@ -955,6 +955,7 @@ TungLam-OmniMecanum-4WD/
 - **0.8.2** — documentation/newbie onboarding + first motor commissioning example
 - **0.9.0** — standard right-handed body frame + SI kinematics + physical motor/chassis model
 - **0.9.1** — Vietnamese-first docs/comments with synchronized English reference material
+- **0.9.2** — complete Arduino IDE API hint coverage for all 65 public functions
 - **1.0.0** — reserved for the stable milestone
 
 ---
