@@ -217,32 +217,56 @@ class TungLam_Control_MotorV5 {
   void Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi chéo tiến-trái; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi chéo tiến-trái với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void T_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi chéo tiến-phải; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi chéo tiến-phải với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void T_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi chéo lùi-trái; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi chéo lùi-trái với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void L_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi chéo lùi-phải; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi chéo lùi-phải với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void L_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi ngang trái; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi ngang trái với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void N_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
   /**
-   * @brief Đi ngang phải; duty1..duty4 là PWM riêng từng bánh.
+   * @brief Đi ngang phải với PWM riêng cho từng bánh.
+   * @param duty1 PWM M1 trước-trái, 0..255.
+   * @param duty2 PWM M2 sau-trái, 0..255.
+   * @param duty3 PWM M3 trước-phải, 0..255.
+   * @param duty4 PWM M4 sau-phải, 0..255.
    */
   void N_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
