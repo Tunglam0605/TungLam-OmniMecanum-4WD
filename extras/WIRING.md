@@ -208,8 +208,8 @@ Cartesian convention:
 
 ```text
 +vx = forward
-+vy = right
-+wz = clockwise
++vy = left
++wz = counter-clockwise
 ```
 
 If a newly built chassis does not strafe as expected after motor polarity is correct, inspect the **mechanical Mecanum wheel orientation** before changing software equations.
@@ -228,8 +228,8 @@ The software convention is still:
 
 ```text
 +vx = forward
-+vy = right
-+wz = clockwise
++vy = left
++wz = counter-clockwise
 ```
 
 Omni mechanical layouts vary. Commission each wheel individually, then test pure vx, pure vy, and pure wz before combined motion.

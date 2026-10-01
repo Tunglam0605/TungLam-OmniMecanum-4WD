@@ -7,6 +7,33 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.9.0] - 2026-10-01
+
+### Standard body-frame convention
+- Standardized the modern Cartesian API to a right-handed mobile-robot frame: +X/+vx forward, +Y/+vy left, +Z/+wz counter-clockwise.
+- Updated the modern Mecanum mixer so +vy produces the proven V5 left-strafe vector `[-,+,-,+]` and +wz produces the proven V5 CCW vector `[-,-,+,+]`.
+- Corrected the built-in normalized Omni-X mixer to a documented canonical 45-degree wheel-axis model.
+- Kept all legacy `TungLam_Control_MotorV5` movement functions and physical movement semantics unchanged.
+
+### SI kinematics and physical drive model
+- Added `TungLamDriveConfig` for motor rated voltage, gearbox/output no-load RPM, supply voltage, wheel radius, wheelbase, track width and empirical `speedScale`.
+- Added `driveVelocity(vxMps, vyMps, wzRadps)` using metres/second and radians/second.
+- Added Mecanum-X and canonical Omni-X inverse kinematics through `inverseKinematics()`.
+- Added forward kinematics through `forwardKinematics()` for teaching and future encoder/odometry integration.
+- Added estimated motor RPM, maximum wheel speed, body translation speed and yaw-rate helpers.
+- Added proportional metric wheel-speed limiting before open-loop conversion to signed PWM.
+- Added explicit open-loop documentation: requested SI velocity is a feed-forward estimate until encoders close the wheel-speed loop.
+
+### Education and future control
+- Added `examples/MetricKinematics` with line-by-line comments, SI configuration, inverse/forward kinematics and future IMU heading-hold integration.
+- Added `extras/KINEMATICS.md` with coordinate frames, Mecanum/Omni equations, RPM/voltage/wheel-radius conversion, PWM feed-forward, encoder PID architecture, IMU yaw PID architecture and ROS-style velocity mapping.
+- Updated README, wiring documentation and modern examples to the new +Y-left / +Z-CCW convention.
+
+### Compatibility
+- This is an intentional modern-API Cartesian sign change for `drive()`, `driveMecanum()` and `driveOmniX()`: callers that passed raw positive `vy` for right or positive `wz` for clockwise must invert those arguments when migrating.
+- Named helpers such as `strafeRight()`, `strafeLeft()`, `rotateRight()` and `rotateLeft()` keep their semantic physical direction.
+- Legacy V5 API behavior is unchanged.
+
 ## [0.8.2] - 2026-09-30
 
 ### Documentation & onboarding

@@ -57,40 +57,80 @@ volatile int16_t gHalApplied[4] = {0, 0, 0, 0};
 volatile bool gTimedBrakeActive = false;
 volatile uint16_t gTimedBrakeOverflowsRemaining = 0;
 
-// Pure Mecanum basis helpers are constexpr so legacy parity is enforced at
-// compile time, not only documented in comments.
-constexpr int32_t mecanumV5M1(int32_t vx, int32_t vy, int32_t wz) {
-  return vx + vy + wz;
-}
-constexpr int32_t mecanumV5M2(int32_t vx, int32_t vy, int32_t wz) {
-  return vx - vy + wz;
-}
-constexpr int32_t mecanumV5M3(int32_t vx, int32_t vy, int32_t wz) {
-  return vx + vy - wz;
-}
-constexpr int32_t mecanumV5M4(int32_t vx, int32_t vy, int32_t wz) {
+// Modern body-frame convention follows the standard right-handed mobile-robot
+// frame used by ROS-style systems:
+//   +X / +vx = forward
+//   +Y / +vy = left
+//   +Z / +wz = counter-clockwise yaw when viewed from above.
+//
+// The wheel signs below preserve the proven V5 physical movement vectors while
+// assigning modern vx/vy/wz the standard body-axis signs.
+constexpr int32_t mecanumM1(int32_t vx, int32_t vy, int32_t wz) {
   return vx - vy - wz;
 }
+constexpr int32_t mecanumM2(int32_t vx, int32_t vy, int32_t wz) {
+  return vx + vy - wz;
+}
+constexpr int32_t mecanumM3(int32_t vx, int32_t vy, int32_t wz) {
+  return vx - vy + wz;
+}
+constexpr int32_t mecanumM4(int32_t vx, int32_t vy, int32_t wz) {
+  return vx + vy + wz;
+}
 
 static_assert(
-    mecanumV5M1(1, 0, 0) == 1 && mecanumV5M2(1, 0, 0) == 1 &&
-    mecanumV5M3(1, 0, 0) == 1 && mecanumV5M4(1, 0, 0) == 1,
-    "Mecanum forward basis must remain V5-compatible: ++++");
+    mecanumM1(1, 0, 0) == 1 && mecanumM2(1, 0, 0) == 1 &&
+    mecanumM3(1, 0, 0) == 1 && mecanumM4(1, 0, 0) == 1,
+    "Mecanum +vx forward basis must remain ++++");
 
 static_assert(
-    mecanumV5M1(0, 1, 0) == 1 && mecanumV5M2(0, 1, 0) == -1 &&
-    mecanumV5M3(0, 1, 0) == 1 && mecanumV5M4(0, 1, 0) == -1,
-    "Mecanum right-strafe basis must remain V5-compatible: +-+-");
+    mecanumM1(0, 1, 0) == -1 && mecanumM2(0, 1, 0) == 1 &&
+    mecanumM3(0, 1, 0) == -1 && mecanumM4(0, 1, 0) == 1,
+    "Mecanum +vy left-strafe basis must remain -+-+");
 
 static_assert(
-    mecanumV5M1(0, 0, 1) == 1 && mecanumV5M2(0, 0, 1) == 1 &&
-    mecanumV5M3(0, 0, 1) == -1 && mecanumV5M4(0, 0, 1) == -1,
-    "Mecanum clockwise basis must remain V5-compatible: ++--");
+    mecanumM1(0, 0, 1) == -1 && mecanumM2(0, 0, 1) == -1 &&
+    mecanumM3(0, 0, 1) == 1 && mecanumM4(0, 0, 1) == 1,
+    "Mecanum +wz CCW basis must remain --++");
 
 static_assert(
-    mecanumV5M1(1, 1, 0) == 2 && mecanumV5M2(1, 1, 0) == 0 &&
-    mecanumV5M3(1, 1, 0) == 2 && mecanumV5M4(1, 1, 0) == 0,
-    "Mecanum forward-right diagonal must remain V5-compatible: +0+0");
+    mecanumM1(1, -1, 0) == 2 && mecanumM2(1, -1, 0) == 0 &&
+    mecanumM3(1, -1, 0) == 2 && mecanumM4(1, -1, 0) == 0,
+    "Mecanum forward-right diagonal must remain +0+0");
+
+// Canonical normalized Omni-X sign helpers. Metric Omni-X uses the same signs
+// plus the 45-degree projection factor and the physical rotation lever arm.
+constexpr int32_t omniM1(int32_t vx, int32_t vy, int32_t wz) {
+  return vx - vy - wz;
+}
+constexpr int32_t omniM2(int32_t vx, int32_t vy, int32_t wz) {
+  return vx + vy - wz;
+}
+constexpr int32_t omniM3(int32_t vx, int32_t vy, int32_t wz) {
+  return -vx - vy - wz;
+}
+constexpr int32_t omniM4(int32_t vx, int32_t vy, int32_t wz) {
+  return -vx + vy - wz;
+}
+
+static_assert(
+    omniM1(1, 0, 0) == 1 && omniM2(1, 0, 0) == 1 &&
+    omniM3(1, 0, 0) == -1 && omniM4(1, 0, 0) == -1,
+    "Omni-X +vx forward basis must remain ++--");
+
+static_assert(
+    omniM1(0, 1, 0) == -1 && omniM2(0, 1, 0) == 1 &&
+    omniM3(0, 1, 0) == -1 && omniM4(0, 1, 0) == 1,
+    "Omni-X +vy left basis must remain -+-+");
+
+static_assert(
+    omniM1(0, 0, 1) == -1 && omniM2(0, 0, 1) == -1 &&
+    omniM3(0, 0, 1) == -1 && omniM4(0, 0, 1) == -1,
+    "Omni-X +wz CCW basis must remain ----");
+
+constexpr float kTwoPi = 6.2831853071795864769f;
+constexpr float kInvSqrt2 = 0.7071067811865475244f;
+constexpr float kSqrt2 = 1.4142135623730950488f;
 
 inline int8_t halSign(int16_t value) {
   if (value > 0) return 1;
@@ -363,6 +403,8 @@ ISR(TIMER3_OVF_vect) {
 TungLamDrive4WD::TungLamDrive4WD()
     : chassis_(TungLamChassis::MecanumX),
       pwmMode_(TungLamPwmMode::High7k8Hz),
+      driveConfig_(),
+      driveConfigValid_(false),
       inverted_{false, false, false, false},
       deadTimeUs_(100),
       commanded_{0, 0, 0, 0},
@@ -561,23 +603,202 @@ void TungLamDrive4WD::drive(int16_t vx, int16_t vy, int16_t wz) {
 }
 
 /**
+ * @brief Store a validated physical model for SI-unit open-loop kinematics.
+ */
+bool TungLamDrive4WD::setDriveConfig(const TungLamDriveConfig& config) {
+  if (!driveConfigIsValid(config)) {
+    return false;
+  }
+
+  driveConfig_ = config;
+  driveConfigValid_ = true;
+  return true;
+}
+
+/** @brief Return the configured physical model. */
+const TungLamDriveConfig& TungLamDrive4WD::driveConfig() const {
+  return driveConfig_;
+}
+
+/** @brief Report whether SI-unit velocity control has a valid physical model. */
+bool TungLamDrive4WD::hasDriveConfig() const {
+  return driveConfigValid_;
+}
+
+/**
+ * @brief Estimate no-load output RPM after voltage and empirical speed scaling.
+ */
+float TungLamDrive4WD::estimatedMotorRpmAtSupply() const {
+  if (!driveConfigValid_) {
+    return 0.0f;
+  }
+
+  return driveConfig_.motorNoLoadRpm *
+         (driveConfig_.supplyVoltageV / driveConfig_.motorNominalVoltageV) *
+         driveConfig_.speedScale;
+}
+
+/** @brief Estimate the maximum wheel-perimeter speed in metres per second. */
+float TungLamDrive4WD::maxWheelLinearSpeedMps() const {
+  if (!driveConfigValid_) {
+    return 0.0f;
+  }
+
+  const float wheelRps = estimatedMotorRpmAtSupply() / 60.0f;
+  return wheelRps * kTwoPi * driveConfig_.wheelRadiusM;
+}
+
+/**
+ * @brief Estimate maximum pure longitudinal/lateral body speed.
+ *
+ * Mecanum wheel tangential speed equals pure body translation speed in the
+ * ideal 45-degree roller model. For a 45-degree Omni X-drive the wheel rolling
+ * axis is projected by 1/sqrt(2), so pure body translation can be sqrt(2)
+ * times the wheel-perimeter speed.
+ */
+float TungLamDrive4WD::maxBodyLinearSpeedMps() const {
+  const float wheelMax = maxWheelLinearSpeedMps();
+  if (wheelMax <= 0.0f) {
+    return 0.0f;
+  }
+
+  return chassis_ == TungLamChassis::OmniX ? wheelMax * kSqrt2 : wheelMax;
+}
+
+/** @brief Estimate the maximum pure yaw rate in radians per second. */
+float TungLamDrive4WD::maxYawRateRadps() const {
+  const float wheelMax = maxWheelLinearSpeedMps();
+  if (wheelMax <= 0.0f) {
+    return 0.0f;
+  }
+
+  const float lever =
+      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+
+  if (lever <= 0.0f) {
+    return 0.0f;
+  }
+
+  return chassis_ == TungLamChassis::OmniX
+             ? wheelMax / (kInvSqrt2 * lever)
+             : wheelMax / lever;
+}
+
+/**
+ * @brief Inverse kinematics: body velocity -> wheel-perimeter velocity.
+ */
+TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
+    float vxMps,
+    float vyMps,
+    float wzRadps) const {
+  if (!driveConfigValid_) {
+    return {0.0f, 0.0f, 0.0f, 0.0f};
+  }
+
+  const float lever =
+      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+
+  if (chassis_ == TungLamChassis::OmniX) {
+    // 45-degree X-drive wheel rolling axes:
+    // M1 FL: +x -y, M2 RL: +x +y,
+    // M3 FR: -x -y, M4 RR: -x +y.
+    return {
+        kInvSqrt2 * ( vxMps - vyMps - lever * wzRadps),
+        kInvSqrt2 * ( vxMps + vyMps - lever * wzRadps),
+        kInvSqrt2 * (-vxMps - vyMps - lever * wzRadps),
+        kInvSqrt2 * (-vxMps + vyMps - lever * wzRadps)
+    };
+  }
+
+  // Mecanum-X with M1 FL, M2 RL, M3 FR, M4 RR.
+  return {
+      vxMps - vyMps - lever * wzRadps,
+      vxMps + vyMps - lever * wzRadps,
+      vxMps - vyMps + lever * wzRadps,
+      vxMps + vyMps + lever * wzRadps
+  };
+}
+
+/**
+ * @brief Forward kinematics: wheel-perimeter velocity -> body velocity.
+ */
+TungLamBodyVelocity TungLamDrive4WD::forwardKinematics(
+    const TungLamWheelVelocity& wheels) const {
+  if (!driveConfigValid_) {
+    return {0.0f, 0.0f, 0.0f};
+  }
+
+  const float lever =
+      0.5f * (driveConfig_.wheelbaseM + driveConfig_.trackWidthM);
+
+  if (lever <= 0.0f) {
+    return {0.0f, 0.0f, 0.0f};
+  }
+
+  if (chassis_ == TungLamChassis::OmniX) {
+    return {
+        kSqrt2 * ( wheels.m1Mps + wheels.m2Mps
+                 - wheels.m3Mps - wheels.m4Mps) * 0.25f,
+        kSqrt2 * (-wheels.m1Mps + wheels.m2Mps
+                 - wheels.m3Mps + wheels.m4Mps) * 0.25f,
+       -kSqrt2 * ( wheels.m1Mps + wheels.m2Mps
+                 + wheels.m3Mps + wheels.m4Mps) / (4.0f * lever)
+    };
+  }
+
+  return {
+      ( wheels.m1Mps + wheels.m2Mps
+      + wheels.m3Mps + wheels.m4Mps) * 0.25f,
+      (-wheels.m1Mps + wheels.m2Mps
+      - wheels.m3Mps + wheels.m4Mps) * 0.25f,
+      (-wheels.m1Mps - wheels.m2Mps
+      + wheels.m3Mps + wheels.m4Mps) / (4.0f * lever)
+  };
+}
+
+/**
+ * @brief SI body-velocity command -> inverse kinematics -> open-loop PWM.
+ */
+bool TungLamDrive4WD::driveVelocity(
+    float vxMps,
+    float vyMps,
+    float wzRadps) {
+  if (!driveConfigValid_) {
+    stop();
+    return false;
+  }
+
+  const TungLamWheelVelocity requested =
+      inverseKinematics(vxMps, vyMps, wzRadps);
+  const TungLamWheelVelocity limited = limitWheelVelocities(requested);
+
+  setWheels(
+      wheelVelocityToPwm(limited.m1Mps),
+      wheelVelocityToPwm(limited.m2Mps),
+      wheelVelocityToPwm(limited.m3Mps),
+      wheelVelocityToPwm(limited.m4Mps));
+
+  return true;
+}
+
+/**
  * @brief Convert Cartesian chassis demand into canonical Mecanum-X wheel demand.
  *
  * Wheel order: M1 front-left, M2 rear-left, M3 front-right, M4 rear-right.
  */
 void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
-  // TungLam/V5-compatible Mecanum basis:
-  //   forward      = + + + +
-  //   strafe right = + - + -
-  //   rotate right = + + - -
+  // Standard right-handed body-frame basis:
+  //   +vx forward = + + + +
+  //   +vy left    = - + - +
+  //   +wz CCW     = - - + +
   //
-  // This preserves the proven legacy robot movement convention while allowing
-  // arbitrary vx/vy/wz mixing in the modern API.
+  // These physical wheel vectors are still exactly the proven V5 movements;
+  // only the modern Cartesian sign convention is standardized.
   const Wheels out = normalize(
-      mecanumV5M1(vx, vy, wz),
-      mecanumV5M2(vx, vy, wz),
-      mecanumV5M3(vx, vy, wz),
-      mecanumV5M4(vx, vy, wz));
+      mecanumM1(vx, vy, wz),
+      mecanumM2(vx, vy, wz),
+      mecanumM3(vx, vy, wz),
+      mecanumM4(vx, vy, wz));
 
   setWheels(out.m1, out.m2, out.m3, out.m4);
 }
@@ -589,14 +810,16 @@ void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
  * must be commissioned for wheel order and polarity before high-speed use.
  */
 void TungLamDrive4WD::driveOmniX(int16_t vx, int16_t vy, int16_t wz) {
-  // Canonical four-wheel Omni X-drive.
-  // Wheel rolling directions are tangent to the X-drive layout.
-  // Positive: vx forward, vy right, wz clockwise.
+  // Canonical 45-degree Omni X-drive using the same right-handed body frame:
+  //   +vx = forward, +vy = left, +wz = CCW.
+  //
+  // Positive wheel directions are chosen tangent-clockwise around the chassis,
+  // giving ++-- for +vx, -+-+ for +vy, and ---- for +wz.
   const Wheels out = normalize(
-      (int32_t)vx + vy + wz,
-      (int32_t)vx - vy + wz,
-      (int32_t)-vx - vy + wz,
-      (int32_t)-vx + vy + wz);
+      omniM1(vx, vy, wz),
+      omniM2(vx, vy, wz),
+      omniM3(vx, vy, wz),
+      omniM4(vx, vy, wz));
 
   setWheels(out.m1, out.m2, out.m3, out.m4);
 }
@@ -611,24 +834,24 @@ void TungLamDrive4WD::backward(uint8_t duty) {
   drive(-(int16_t)duty, 0, 0);
 }
 
-/** @brief Generate a pure +vy command. */
+/** @brief Generate a pure -vy command (right translation). */
 void TungLamDrive4WD::strafeRight(uint8_t duty) {
-  drive(0, (int16_t)duty, 0);
-}
-
-/** @brief Generate a pure -vy command. */
-void TungLamDrive4WD::strafeLeft(uint8_t duty) {
   drive(0, -(int16_t)duty, 0);
 }
 
-/** @brief Generate a pure +wz clockwise command. */
-void TungLamDrive4WD::rotateRight(uint8_t duty) {
-  drive(0, 0, (int16_t)duty);
+/** @brief Generate a pure +vy command (left translation). */
+void TungLamDrive4WD::strafeLeft(uint8_t duty) {
+  drive(0, (int16_t)duty, 0);
 }
 
-/** @brief Generate a pure -wz counter-clockwise command. */
-void TungLamDrive4WD::rotateLeft(uint8_t duty) {
+/** @brief Generate a pure -wz command (clockwise/right rotation). */
+void TungLamDrive4WD::rotateRight(uint8_t duty) {
   drive(0, 0, -(int16_t)duty);
+}
+
+/** @brief Generate a pure +wz command (counter-clockwise/left rotation). */
+void TungLamDrive4WD::rotateLeft(uint8_t duty) {
+  drive(0, 0, (int16_t)duty);
 }
 
 /**
@@ -881,6 +1104,64 @@ bool TungLamDrive4WD::directionChanged(const Wheels& a, const Wheels& b) {
     }
   }
   return false;
+}
+
+/** @brief Validate all parameters required by the SI/open-loop model. */
+bool TungLamDrive4WD::driveConfigIsValid(const TungLamDriveConfig& config) {
+  return config.motorNominalVoltageV > 0.0f &&
+         config.motorNoLoadRpm > 0.0f &&
+         config.supplyVoltageV > 0.0f &&
+         config.wheelRadiusM > 0.0f &&
+         config.wheelbaseM > 0.0f &&
+         config.trackWidthM > 0.0f &&
+         config.speedScale > 0.0f;
+}
+
+/** @brief Convert one signed wheel-perimeter velocity to PWM feed-forward. */
+int16_t TungLamDrive4WD::wheelVelocityToPwm(float wheelMps) const {
+  const float maxMps = maxWheelLinearSpeedMps();
+  if (maxMps <= 0.0f || wheelMps == 0.0f) {
+    return 0;
+  }
+
+  float pwm = (wheelMps / maxMps) * 255.0f;
+  if (pwm > 255.0f) pwm = 255.0f;
+  if (pwm < -255.0f) pwm = -255.0f;
+
+  return (int16_t)(pwm >= 0.0f ? pwm + 0.5f : pwm - 0.5f);
+}
+
+/**
+ * @brief Scale all requested wheel velocities together when any exceeds the
+ * estimated open-loop wheel-speed capability.
+ */
+TungLamWheelVelocity TungLamDrive4WD::limitWheelVelocities(
+    const TungLamWheelVelocity& wheels) const {
+  const float maxAvailable = maxWheelLinearSpeedMps();
+  if (maxAvailable <= 0.0f) {
+    return {0.0f, 0.0f, 0.0f, 0.0f};
+  }
+
+  float maxRequested = wheels.m1Mps < 0.0f ? -wheels.m1Mps : wheels.m1Mps;
+  const float a2 = wheels.m2Mps < 0.0f ? -wheels.m2Mps : wheels.m2Mps;
+  const float a3 = wheels.m3Mps < 0.0f ? -wheels.m3Mps : wheels.m3Mps;
+  const float a4 = wheels.m4Mps < 0.0f ? -wheels.m4Mps : wheels.m4Mps;
+
+  if (a2 > maxRequested) maxRequested = a2;
+  if (a3 > maxRequested) maxRequested = a3;
+  if (a4 > maxRequested) maxRequested = a4;
+
+  if (maxRequested <= maxAvailable || maxRequested <= 0.0f) {
+    return wheels;
+  }
+
+  const float scale = maxAvailable / maxRequested;
+  return {
+      wheels.m1Mps * scale,
+      wheels.m2Mps * scale,
+      wheels.m3Mps * scale,
+      wheels.m4Mps * scale
+  };
 }
 
 /**

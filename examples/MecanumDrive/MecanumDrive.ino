@@ -4,8 +4,8 @@
  *
  * Coordinate convention:
  * - +vx = forward
- * - +vy = strafe right
- * - +wz = rotate clockwise/right
+ * - +vy = strafe left
+ * - +wz = rotate counter-clockwise/left
  *
  * The mixer is aligned with the original TungLam V5 movement basis.
  */
@@ -34,10 +34,12 @@ void loop() {
   // Physical ABS cutoff does not depend on this call, but keeping update() is harmless.
   robot.update();
 
-  // Command pure forward motion:
-  // vx=150 gives forward demand, vy=0 disables strafe, wz=0 disables rotation.
+  // Command pure forward motion in normalized command units:
+  // +vx = forward, +vy = left, +wz = counter-clockwise.
+  // Here vx=150, while vy=0 and wz=0 disable lateral/yaw motion.
   robot.drive(150, 0, 0);
 
-  // In a real robot, replace the constants above with joystick, autonomous,
-  // ROS2, sensor, or other application commands.
+  // drive() uses normalized -255..255 style command units.
+  // For physical m/s and rad/s commands, configure TungLamDriveConfig and use
+  // driveVelocity(vxMps, vyMps, wzRadps).
 }
