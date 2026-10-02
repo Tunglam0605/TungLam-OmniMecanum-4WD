@@ -458,7 +458,14 @@ class TungLamDrive4WD {
    * @param vy Vận tốc tương đối trục Y: dương=trái, âm=phải.
    * @param wz Tốc độ quay tương đối trục Z: dương=CCW/trái, âm=CW/phải.
    *
+   * Với Mecanum-X, hàm giữ đúng baseline V5 đã chạy thật:
+   *   code order [M1,M2,M3,M4]
+   *   vị trí     [trước-trái, sau-trái, sau-phải, trước-phải]
+   *   +vy trái   [-,+,-,+]
+   *   +wz CCW    [-,-,+,+]
+   *
    * Đây không phải đơn vị vật lý. Muốn dùng m/s và rad/s hãy dùng driveVelocity().
+   * Xem extras/V5_BASELINE.md trước khi thay đổi mixer/wheel mapping.
    */
   void drive(int16_t vx, int16_t vy, int16_t wz);
 
@@ -612,6 +619,11 @@ class TungLamDrive4WD {
    * @param vx -255..255; dương=tiến.
    * @param vy -255..255; dương=trái.
    * @param wz -255..255; dương=quay CCW/trái.
+   *
+   * Baseline V5 theo channel [M1,M2,M3,M4]:
+   *   +vx -> [+,+,+,+]
+   *   +vy -> [-,+,-,+]
+   *   +wz -> [-,-,+,+]
    */
   void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
 
@@ -638,12 +650,14 @@ class TungLamDrive4WD {
   /**
    * @brief Cho đế đa hướng đi ngang sang phải (-Y).
    * @param duty PWM từ 0..255.
+   * @note Mecanum-X baseline V5 theo [M1,M2,M3,M4] = [+,-,+,-].
    */
   void strafeRight(uint8_t duty);
 
   /**
    * @brief Cho đế đa hướng đi ngang sang trái (+Y).
    * @param duty PWM từ 0..255.
+   * @note Mecanum-X baseline V5 theo [M1,M2,M3,M4] = [-,+,-,+].
    */
   void strafeLeft(uint8_t duty);
 

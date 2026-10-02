@@ -571,8 +571,15 @@ class TungLamDrive4WD {
    * @param vy +255 left, -255 right.
    * @param wz +255 counter-clockwise, -255 clockwise.
    *
+   * For Mecanum-X this preserves the hardware-proven V5 baseline:
+   *   code order [M1,M2,M3,M4]
+   *   positions  [front-left, rear-left, rear-right, front-right]
+   *   +vy left   [-,+,-,+]
+   *   +wz CCW    [-,-,+,+]
+   *
    * @note These are normalized command units, not SI velocity units. Use
    * driveVelocity() for metres/second and radians/second.
+   * See extras/V5_BASELINE.en.md before changing the mixer/wheel mapping.
    */
   void drive(int16_t vx, int16_t vy, int16_t wz);
 
@@ -691,8 +698,10 @@ class TungLamDrive4WD {
    * - +vy left    = [-,+,-,+]
    * - +wz CCW     = [-,-,+,+]
    *
-   * These vectors preserve the proven V5 physical movement patterns while
-   * assigning the modern vx/vy/wz signs to the right-handed robot convention.
+   * Channel order is [M1,M2,M3,M4] =
+   * [front-left, rear-left, rear-right, front-right].
+   * These vectors preserve the hardware-proven V5 movement patterns while
+   * assigning modern vx/vy/wz signs to the right-handed body convention.
    */
 
   void driveMecanum(int16_t vx, int16_t vy, int16_t wz);
@@ -706,10 +715,16 @@ class TungLamDrive4WD {
   /** @brief Convenience helper for pure backward motion. */
   void backward(uint8_t duty);
 
-  /** @brief Convenience helper for right translation (-vy). */
+  /**
+   * @brief Convenience helper for right translation (-vy).
+   * V5-proven Mecanum channel polarity [M1,M2,M3,M4] = [+,-,+,-].
+   */
   void strafeRight(uint8_t duty);
 
-  /** @brief Convenience helper for left translation (+vy). */
+  /**
+   * @brief Convenience helper for left translation (+vy).
+   * V5-proven Mecanum channel polarity [M1,M2,M3,M4] = [-,+,-,+].
+   */
   void strafeLeft(uint8_t duty);
 
   /** @brief Convenience helper for clockwise/right rotation (-wz). */

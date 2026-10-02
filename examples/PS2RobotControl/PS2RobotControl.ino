@@ -1,10 +1,10 @@
 /**
  * @file PS2RobotControl.ino
- * @brief Ví dụ KHUYẾN NGHỊ điều khiển đế robot bằng TungLam_PS2.
+ * @brief Ví dụ KHUYẾN NGHỊ: điều khiển đế robot theo phong cách RoboBall/V5.
  *
- * PHONG CÁCH ĐIỀU KHIỂN
+ * MỤC TIÊU
  * ==========================================================================
- * Ví dụ này bám theo cách điều khiển đã dùng trong các project RoboBall/V5:
+ * Ví dụ này chỉ tập trung vào LOGIC LÁI XE, không trộn thêm cơ cấu phụ:
  *
  *   JOYSTICK TRÁI = chuyển động chính
  *     UP    -> tiến
@@ -12,20 +12,19 @@
  *     LEFT  -> ngang trái
  *     RIGHT -> ngang phải
  *
- *   JOYSTICK PHẢI = quay, có ƯU TIÊN CAO HƠN joystick trái
+ *   JOYSTICK PHẢI = quay, ƯU TIÊN CAO HƠN joystick trái
  *     LEFT  -> xoay trái / CCW
  *     RIGHT -> xoay phải / CW
  *
- * Ví dụ:
+ * HÀNH VI QUAN TRỌNG
+ * ==========================================================================
+ * 1. Giữ joystick trái UP -> robot tiến.
+ * 2. Vẫn giữ UP, gạt joystick phải RIGHT -> robot xoay phải.
+ * 3. Thả joystick phải về CENTER -> robot tiếp tục tiến vì joystick trái
+ *    vẫn đang giữ UP.
  *
- *   1. Đang giữ joystick trái UP -> robot tiến.
- *   2. Vẫn giữ UP, gạt joystick phải RIGHT -> robot xoay phải.
- *   3. Thả joystick phải về CENTER -> robot tự tiếp tục tiến,
- *      vì joystick trái vẫn đang giữ UP.
- *
- * Điểm khác code cũ:
- * - Code cũ đạt priority vì các if của joystick phải chạy sau joystick trái.
- * - Example mới viết priority rõ bằng return, dễ đọc và không phụ thuộc thứ tự if.
+ * Đây chính là priority đã xuất hiện trong các project RoboBall cũ, nhưng
+ * code mới biểu diễn rõ bằng return thay vì phụ thuộc câu if nào chạy sau.
  *
  * ĐẤU DÂY PS2 - ARDUINO MEGA 2560
  * ==========================================================================
@@ -36,26 +35,31 @@
  *   PS2 GND      -> GND chung
  *   PS2 VCC      -> nguồn đúng theo receiver
  *
- * MOTOR V5 / MODERN
+ * MOTOR BASELINE V5
  * ==========================================================================
- *   M1 = trước trái  = PWM D5
- *   M2 = sau trái    = PWM D6
- *   M3 = sau phải    = PWM D7
- *   M4 = trước phải  = PWM D8
+ *   M1 = trước-trái  = PWM D5
+ *   M2 = sau-trái    = PWM D6
+ *   M3 = sau-phải    = PWM D7
+ *   M4 = trước-phải  = PWM D8
  *
- *   DIR dùng D30..D37 theo thư viện motor.
+ *   Thứ tự code    : M1, M2, M3, M4
+ *   Theo kim đồng hồ: M1 -> M4 -> M3 -> M2
  *
  * AN TOÀN
  * ==========================================================================
  * - Mất PS2 -> robot.stop() ngay.
+ * - Joystick phải chỉ chiếm quyền khi LEFT/RIGHT.
  * - CENTER/UNKNOWN joystick trái -> stop.
  * - Không dùng delay().
- * - PS2 poll mặc định 50 Hz.
+ * - Poll PS2 mặc định 50 Hz.
  *
  * DEBUG
  * ==========================================================================
- * Đổi PS2_ROBOT_DEBUG = 1 để bật debug event một dòng.
- * Khi = 0, production path không in Serial.
+ * Đổi PS2_ROBOT_DEBUG = 1 để bật ps2.debug(Serial).
+ * Debug chỉ in khi state thay đổi; production để = 0.
+ *
+ * Muốn học button(), pressed(), released(), raw analog hay reconnect:
+ * xem các example trong thư viện TungLam_PS2.
  */
 
 #include <TungLam_PS2.h>
@@ -67,14 +71,8 @@ TungLamPS2 ps2;
 TungLamDrive4WD robot;
 
 constexpr uint8_t PS2_CS_PIN = 53;
-
-constexpr uint8_t SPEED_SLOW = 120;
-constexpr uint8_t SPEED_NORMAL = 180;
-constexpr uint8_t SPEED_FAST = 230;
-
-constexpr uint8_t TURN_SLOW = 110;
-constexpr uint8_t TURN_NORMAL = 155;
-constexpr uint8_t TURN_FAST = 200;
+constexpr uint8_t MOVE_SPEED = 180;
+constexpr uint8_t TURN_SPEED = 155;
 
 void setup() {
 #if PS2_ROBOT_DEBUG
@@ -96,68 +94,49 @@ void loop() {
   ps2.debug(Serial);
 #endif
 
-  // ------------------------------------------------------------------------
-  // FAIL-SAFE
-  // ------------------------------------------------------------------------
+  // FAIL-SAFE: mất receiver/tay cầm thì không giữ lệnh cũ.
   if (!ps2.connected()) {
     robot.stop();
     return;
   }
 
-  // ------------------------------------------------------------------------
-  // TỐC ĐỘ - chỉ là mapping minh họa.
-  // L1 = chậm, R1 = nhanh, không giữ gì = bình thường.
-  // Nếu giữ đồng thời L1 và R1 thì L1 ưu tiên để an toàn hơn.
-  // ------------------------------------------------------------------------
-  uint8_t moveSpeed = SPEED_NORMAL;
-  uint8_t turnSpeed = TURN_NORMAL;
-
-  if (ps2.button(PS2Button::L1)) {
-    moveSpeed = SPEED_SLOW;
-    turnSpeed = TURN_SLOW;
-  } else if (ps2.button(PS2Button::R1)) {
-    moveSpeed = SPEED_FAST;
-    turnSpeed = TURN_FAST;
-  }
-
-  // ------------------------------------------------------------------------
+  // ========================================================================
   // PRIORITY 1 - JOYSTICK PHẢI: XOAY
-  // ------------------------------------------------------------------------
-  // Đây là phần quan trọng nhất của example.
-  // Khi joystick phải có lệnh quay, bỏ qua lệnh tịnh tiến của joystick trái.
-  // Thả joystick phải về tâm -> code đi xuống và đọc joystick trái trở lại.
+  // ========================================================================
+  // Nếu có lệnh quay, thực hiện ngay và return.
+  // Vì vậy joystick phải luôn ghi đè joystick trái.
   switch (ps2.rightDirection()) {
     case PS2StickDirection::Left:
-      robot.rotateLeft(turnSpeed);
+      robot.rotateLeft(TURN_SPEED);
       return;
 
     case PS2StickDirection::Right:
-      robot.rotateRight(turnSpeed);
+      robot.rotateRight(TURN_SPEED);
       return;
 
     default:
-      // UP/DOWN/CENTER/UNKNOWN của joystick phải không chiếm quyền.
+      // UP/DOWN/CENTER/UNKNOWN không chiếm quyền điều khiển.
       break;
   }
 
-  // ------------------------------------------------------------------------
+  // ========================================================================
   // PRIORITY 2 - JOYSTICK TRÁI: TIẾN/LÙI/NGANG
-  // ------------------------------------------------------------------------
+  // ========================================================================
   switch (ps2.leftDirection()) {
     case PS2StickDirection::Up:
-      robot.forward(moveSpeed);
+      robot.forward(MOVE_SPEED);
       break;
 
     case PS2StickDirection::Down:
-      robot.backward(moveSpeed);
+      robot.backward(MOVE_SPEED);
       break;
 
     case PS2StickDirection::Left:
-      robot.strafeLeft(moveSpeed);
+      robot.strafeLeft(MOVE_SPEED);
       break;
 
     case PS2StickDirection::Right:
-      robot.strafeRight(moveSpeed);
+      robot.strafeRight(MOVE_SPEED);
       break;
 
     case PS2StickDirection::Center:

@@ -17,6 +17,9 @@ jobs:
       - name: Verify Vietnamese public API hints
         run: python3 tools/check_api_docs.py
 
+      - name: Verify V5 hardware baseline
+        run: python3 tools/check_v5_baseline.py
+
       - name: Arduino Lint
         uses: arduino/arduino-lint-action@v3
         with:

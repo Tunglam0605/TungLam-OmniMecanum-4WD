@@ -54,6 +54,8 @@ Legacy `TungLam_Control_MotorV5` vẫn giữ hành vi lịch sử.
 
 # 2. Thứ tự bánh và kích thước đế
 
+> Mapping M1..M4 và vector Mecanum chuẩn đã chạy thật được khóa tại **[V5_BASELINE.md](V5_BASELINE.md)**.
+
 ```text
                      ĐẦU XE
 

@@ -155,6 +155,8 @@ GND Arduino Mega
 
 Tài liệu chi tiết: **[extras/WIRING.md](extras/WIRING.md)**
 
+Baseline phần cứng V5 đã chạy thật: **[extras/V5_BASELINE.md](extras/V5_BASELINE.md)**
+
 ---
 
 # 📦 Cài đặt từ Arduino IDE

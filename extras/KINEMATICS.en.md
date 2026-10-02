@@ -52,6 +52,8 @@ The legacy `TungLam_Control_MotorV5` movement functions keep their historical be
 
 ## 2. Wheel numbering
 
+> The hardware-proven M1..M4 mapping and Mecanum command basis are locked in **[V5_BASELINE.en.md](V5_BASELINE.en.md)**.
+
 ```text
                      FRONT
 

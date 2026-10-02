@@ -22,7 +22,7 @@ jobs:
       - name: Install pinned TungLam_PS2 integration dependency
         shell: bash
         run: |
-          git clone --depth 1 --branch v0.4.0 \
+          git clone --depth 1 --branch v0.4.1 \
             https://github.com/Tunglam0605/TungLam-PS2-Controller.git \
             "$RUNNER_TEMP/TungLam_PS2"
 

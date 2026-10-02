@@ -26,6 +26,8 @@ Thư viện chỉ điều khiển phần logic. Dòng motor, công suất nguồ
 
 # 2. Quy ước thứ tự bánh
 
+> Ground truth từ V5 đã chạy thật: **[V5_BASELINE.md](V5_BASELINE.md)**.
+
 Nhìn từ trên xuống:
 
 ```text

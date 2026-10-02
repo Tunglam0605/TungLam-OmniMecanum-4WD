@@ -26,6 +26,8 @@ The library controls logic only. Motor current, battery sizing, wiring gauge, me
 
 ## 2. Logical wheel IDs
 
+> Hardware-proven ground truth: **[V5_BASELINE.en.md](V5_BASELINE.en.md)**.
+
 Top view:
 
 ```text

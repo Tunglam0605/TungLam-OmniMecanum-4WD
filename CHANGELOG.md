@@ -7,6 +7,40 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.5] - 2026-10-02
+
+### Full V5 baseline audit
+- Added `extras/V5_BASELINE.md` and English mirror as the single ground-truth reference for the hardware-proven V5 chassis.
+- Locked the physical mapping:
+  - M1 = front-left = PWM D5
+  - M2 = rear-left = PWM D6
+  - M3 = rear-right = PWM D7
+  - M4 = front-right = PWM D8
+  - code order = M1,M2,M3,M4
+  - clockwise physical order = M1 -> M4 -> M3 -> M2
+- Clarified that wheel-vector signs are channel command polarities, not a direct visual description of shaft rotation.
+- Cross-linked README, wiring guide and kinematics guide to the V5 baseline.
+
+### PS2 control examples
+- Simplified `PS2RobotControl` so it teaches only the proven RoboBall/V5 driving policy:
+  - left stick = forward/backward/strafe
+  - right-stick LEFT/RIGHT = rotation with explicit higher priority
+  - releasing the right stick returns control to the still-held left-stick command
+- Removed unrelated L1/R1 speed-mode behavior from the recommended driving example.
+- Kept `PS2RobotVectorMix` as the only advanced second driving example for simultaneous translation + rotation.
+- Specialized button/debug/raw/reconnect examples remain in TungLam_PS2, keeping responsibilities separated.
+
+### Regression protection
+- Added `tools/check_v5_baseline.py`.
+- CI now fails if M3/M4 physical mapping, V5 Mecanum basis, clockwise wheel order, or recommended PS2 right-stick priority regresses.
+- Expanded modern API Doxygen comments with V5-proven wheel order and lateral basis.
+- Compile CI now pins `TungLam_PS2 v0.4.1`.
+
+### Compatibility
+- Legacy V5 executable behavior is unchanged.
+- Modern Mecanum mixer remains at the V5-proven equations restored in v0.10.3.
+- Omni-X, timers, braking and public executable motor APIs are unchanged.
+
 ## [0.10.4] - 2026-10-02
 
 ### PS2 driving examples
