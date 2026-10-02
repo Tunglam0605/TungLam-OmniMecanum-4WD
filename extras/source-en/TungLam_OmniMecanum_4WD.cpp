@@ -63,9 +63,16 @@ volatile uint16_t gTimedBrakeOverflowsRemaining = 0;
 //   +Y / +vy = left
 //   +Z / +wz = counter-clockwise yaw when viewed from above.
 //
-// The modern Mecanum signs below follow the physical X-wheel layout used by
-// this project: M1 front-left, M2 rear-left, M3 front-right, M4 rear-right.
-// Legacy V5 movement functions intentionally keep their historical vectors.
+// The wheel signs below preserve the proven V5 physical movement vectors while
+// assigning modern vx/vy/wz the standard body-axis signs.
+//
+// CHANNEL order used by every vector:
+//   [M1, M2, M3, M4]
+// = [front-left, rear-left, rear-right, front-right]
+// = [D5, D6, D7, D8]
+//
+// Clockwise physical order viewed from above is:
+//   M1 -> M4 -> M3 -> M2
 constexpr int32_t mecanumM1(int32_t vx, int32_t vy, int32_t wz) {
   return vx - vy - wz;
 }
@@ -73,10 +80,10 @@ constexpr int32_t mecanumM2(int32_t vx, int32_t vy, int32_t wz) {
   return vx + vy - wz;
 }
 constexpr int32_t mecanumM3(int32_t vx, int32_t vy, int32_t wz) {
-  return vx + vy + wz;
+  return vx - vy + wz;
 }
 constexpr int32_t mecanumM4(int32_t vx, int32_t vy, int32_t wz) {
-  return vx - vy + wz;
+  return vx + vy + wz;
 }
 
 static_assert(
@@ -86,13 +93,13 @@ static_assert(
 
 static_assert(
     mecanumM1(0, 1, 0) == -1 && mecanumM2(0, 1, 0) == 1 &&
-    mecanumM3(0, 1, 0) == 1 && mecanumM4(0, 1, 0) == -1,
-    "Mecanum +vy left-strafe basis must remain -++-");
+    mecanumM3(0, 1, 0) == -1 && mecanumM4(0, 1, 0) == 1,
+    "Mecanum +vy left-strafe basis must remain -+-+");
 
 static_assert(
     mecanumM1(0, -1, 0) == 1 && mecanumM2(0, -1, 0) == -1 &&
-    mecanumM3(0, -1, 0) == -1 && mecanumM4(0, -1, 0) == 1,
-    "Mecanum -vy right-strafe basis must remain +--+");
+    mecanumM3(0, -1, 0) == 1 && mecanumM4(0, -1, 0) == -1,
+    "Mecanum -vy right-strafe basis must remain +-+-");
 
 static_assert(
     mecanumM1(0, 0, 1) == -1 && mecanumM2(0, 0, 1) == -1 &&
@@ -101,13 +108,13 @@ static_assert(
 
 static_assert(
     mecanumM1(1, -1, 0) == 2 && mecanumM2(1, -1, 0) == 0 &&
-    mecanumM3(1, -1, 0) == 0 && mecanumM4(1, -1, 0) == 2,
-    "Mecanum forward-right diagonal must remain +00+");
+    mecanumM3(1, -1, 0) == 2 && mecanumM4(1, -1, 0) == 0,
+    "Mecanum forward-right diagonal must remain +0+0");
 
 static_assert(
     mecanumM1(1, 1, 0) == 0 && mecanumM2(1, 1, 0) == 2 &&
-    mecanumM3(1, 1, 0) == 2 && mecanumM4(1, 1, 0) == 0,
-    "Mecanum forward-left diagonal must remain 0++0");
+    mecanumM3(1, 1, 0) == 0 && mecanumM4(1, 1, 0) == 2,
+    "Mecanum forward-left diagonal must remain 0+0+");
 
 // Canonical normalized Omni-X sign helpers. Metric Omni-X uses the same signs
 // plus the 45-degree projection factor and the physical rotation lever arm.
@@ -696,7 +703,7 @@ TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
   if (chassis_ == TungLamChassis::OmniX) {
     // 45-degree X-drive wheel rolling axes:
     // M1 FL: +x -y, M2 RL: +x +y,
-    // M3 FR: -x -y, M4 RR: -x +y.
+    // M3 RR: -x -y, M4 FR: -x +y.
     return {
         kInvSqrt2 * ( vxMps - vyMps - lever * wzRadps),
         kInvSqrt2 * ( vxMps + vyMps - lever * wzRadps),
@@ -705,12 +712,12 @@ TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
     };
   }
 
-  // Mecanum-X with M1 FL, M2 RL, M3 FR, M4 RR.
+  // Mecanum-X with M1 FL, M2 RL, M3 RR, M4 FR.
   return {
       vxMps - vyMps - lever * wzRadps,
       vxMps + vyMps - lever * wzRadps,
-      vxMps + vyMps + lever * wzRadps,
-      vxMps - vyMps + lever * wzRadps
+      vxMps - vyMps + lever * wzRadps,
+      vxMps + vyMps + lever * wzRadps
   };
 }
 
@@ -744,7 +751,7 @@ TungLamBodyVelocity TungLamDrive4WD::forwardKinematics(
       ( wheels.m1Mps + wheels.m2Mps
       + wheels.m3Mps + wheels.m4Mps) * 0.25f,
       (-wheels.m1Mps + wheels.m2Mps
-      + wheels.m3Mps - wheels.m4Mps) * 0.25f,
+      - wheels.m3Mps + wheels.m4Mps) * 0.25f,
       (-wheels.m1Mps - wheels.m2Mps
       + wheels.m3Mps + wheels.m4Mps) / (4.0f * lever)
   };
@@ -863,7 +870,7 @@ TungLamBodyVelocity TungLamDrive4WD::appliedBodyVelocity() const {
 void TungLamDrive4WD::driveMecanum(int16_t vx, int16_t vy, int16_t wz) {
   // Standard right-handed body-frame basis:
   //   +vx forward = + + + +
-  //   +vy left    = - + + -
+  //   +vy left    = - + - +
   //   +wz CCW     = - - + +
   //
   // These physical wheel vectors are still exactly the proven V5 movements;

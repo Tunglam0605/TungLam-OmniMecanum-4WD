@@ -33,19 +33,22 @@ Nhìn từ trên xuống:
                            +X
                             ↑
 
-              M1                         M3
+              M1                         M4
          TRƯỚC-TRÁI                  TRƯỚC-PHẢI
-            PWM D5                     PWM D7
+            PWM D5                     PWM D8
 
-              M2                         M4
+              M2                         M3
           SAU-TRÁI                    SAU-PHẢI
-            PWM D6                     PWM D8
+            PWM D6                     PWM D7
 
                             ↓
                      ĐUÔI XE / REAR
 ```
 
 Luôn giữ đúng quy ước M1..M4 trong đấu dây, code và tài liệu.
+
+> **Thứ tự channel/code:** M1, M2, M3, M4 = trước-trái, sau-trái, sau-phải, trước-phải.
+> **Thứ tự vật lý theo chiều kim đồng hồ:** M1 → M4 → M3 → M2.
 
 ---
 
@@ -171,8 +174,8 @@ M4 lùi
 |---|---|
 | M1 | Trước-trái |
 | M2 | Sau-trái |
-| M3 | Trước-phải |
-| M4 | Sau-phải |
+| M3 | Sau-phải |
+| M4 | Trước-phải |
 
 Nếu chỉ một bánh bị ngược chiều:
 
@@ -220,8 +223,8 @@ Các vector vật lý chính:
 Tiến            + + + +
 Lùi             - - - -
 
-Trái            - + + -
-Phải            + - - +
+Trái            - + - +
+Phải            + - + -
 
 Quay trái CCW   - - + +
 Quay phải CW    + + - -
@@ -230,10 +233,10 @@ Quay phải CW    + + - -
 Đường chéo:
 
 ```text
-Tiến-phải       + 0 0 +
-Tiến-trái       0 + + 0
-Lùi-phải        0 - - 0
-Lùi-trái        - 0 0 -
+Tiến-phải       + 0 + 0
+Tiến-trái       0 + 0 +
+Lùi-phải        0 - 0 -
+Lùi-trái        - 0 - 0
 ```
 
 Nếu robot không đi ngang đúng sau khi đã xác nhận polarity từng motor, hãy kiểm tra **hướng lắp bánh Mecanum** trước khi sửa code.

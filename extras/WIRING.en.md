@@ -33,19 +33,22 @@ Top view:
                            +vx
                             ↑
 
-              M1                         M3
+              M1                         M4
          FRONT-LEFT                 FRONT-RIGHT
-            PWM D5                     PWM D7
+            PWM D5                     PWM D8
 
-              M2                         M4
+              M2                         M3
           REAR-LEFT                  REAR-RIGHT
-            PWM D6                     PWM D8
+            PWM D6                     PWM D7
 
                             ↓
                       REAR / ĐUÔI XE
 ```
 
 Keep these IDs consistent in wiring, code, and troubleshooting.
+
+> **Channel/code order:** M1, M2, M3, M4 = front-left, rear-left, rear-right, front-right.
+> **Clockwise physical order:** M1 → M4 → M3 → M2.
 
 ---
 
@@ -171,8 +174,8 @@ Expected physical positions:
 |---|---|
 | M1 | Front-left |
 | M2 | Rear-left |
-| M3 | Front-right |
-| M4 | Rear-right |
+| M3 | Rear-right |
+| M4 | Front-right |
 
 If one motor is reversed:
 
@@ -186,13 +189,13 @@ Change only the affected wheel number.
 
 ## 8. Mecanum convention
 
-The modern Mecanum mixer follows the physical X-layout used by this project. Legacy V5 keeps its historical vectors separately.
+The modern Mecanum mixer intentionally matches the original V5 movement basis.
 
 ```text
 Forward       + + + +
 Backward      - - - -
-Right         + - - +
-Left          - + + -
+Right         + - + -
+Left          - + - +
 Rotate right  + + - -
 Rotate left   - - + +
 ```
@@ -200,10 +203,10 @@ Rotate left   - - + +
 Diagonals:
 
 ```text
-Forward-right   + 0 0 +
-Forward-left    0 + + 0
-Backward-right  0 - - 0
-Backward-left   - 0 0 -
+Forward-right   + 0 + 0
+Forward-left    0 + 0 +
+Backward-right  0 - 0 -
+Backward-left   - 0 - 0
 ```
 
 Cartesian convention:

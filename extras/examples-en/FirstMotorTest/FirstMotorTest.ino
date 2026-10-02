@@ -9,8 +9,8 @@
  * - Verify that the physical wheel positions are:
  *     M1 = front-left
  *     M2 = rear-left
- *     M3 = front-right
- *     M4 = rear-right
+ *     M3 = rear-right
+ *     M4 = front-right
  *
  * The sketch tests each wheel forward and reverse one at a time. It is intended
  * to find wiring, polarity, and wheel-numbering mistakes before chassis motion.

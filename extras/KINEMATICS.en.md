@@ -55,14 +55,24 @@ The legacy `TungLam_Control_MotorV5` movement functions keep their historical be
 ```text
                      FRONT
 
-              M1             M3
+              M1             M4
           front-left     front-right
 
-              M2             M4
+              M2             M3
            rear-left      rear-right
 
                       REAR
 ```
+
+Important ordering rule:
+
+```text
+Code/vector order        : M1, M2, M3, M4
+Physical positions       : front-left, rear-left, rear-right, front-right
+Clockwise physical order : M1 -> M4 -> M3 -> M2
+```
+
+All `v1..v4` equations use **channel order M1..M4**, not clockwise chassis order.
 
 Physical dimensions:
 
@@ -283,8 +293,8 @@ the wheel-perimeter linear velocities are:
 ```text
 v1 = vx - vy - K*wz
 v2 = vx + vy - K*wz
-v3 = vx + vy + K*wz
-v4 = vx - vy + K*wz
+v3 = vx - vy + K*wz
+v4 = vx + vy + K*wz
 ```
 
 Wheel order:
@@ -292,8 +302,8 @@ Wheel order:
 ```text
 v1 -> M1 front-left
 v2 -> M2 rear-left
-v3 -> M3 front-right
-v4 -> M4 rear-right
+v3 -> M3 rear-right
+v4 -> M4 front-right
 ```
 
 The library exposes this calculation without driving motors:
@@ -324,7 +334,7 @@ vx = 0
 vy > 0
 wz = 0
 
-=> - + + -
+=> - + - +
 ```
 
 Pure CCW rotation:
@@ -337,7 +347,7 @@ wz > 0
 => - - + +
 ```
 
-These vectors follow the physical Mecanum-X wheel layout above. The legacy `TungLam_Control_MotorV5` API intentionally keeps its historical vectors for drop-in compatibility.
+These are the same physical movement vectors already proven by the original V5 library, but the modern Cartesian signs now follow the standard body frame.
 
 ---
 
@@ -350,7 +360,7 @@ vx =
     (v1 + v2 + v3 + v4) / 4
 
 vy =
-    (-v1 + v2 + v3 - v4) / 4
+    (-v1 + v2 - v3 + v4) / 4
 
 wz =
     (-v1 - v2 + v3 + v4) / (4*K)

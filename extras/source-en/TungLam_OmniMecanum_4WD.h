@@ -65,13 +65,13 @@
                              +vx
                               ^
                               |
-                 M1                         M3
+                 M1                         M4
             FRONT-LEFT                 FRONT-RIGHT
-               D5                         D7
+               D5                         D8
 
-                 M2                         M4
+                 M2                         M3
              REAR-LEFT                  REAR-RIGHT
-               D6                         D8
+               D6                         D7
                               |
                        ─ÉU├öI XE / REAR
 
@@ -317,48 +317,48 @@ class TungLam_Control_MotorV5 {
    * @brief Forward-left diagonal with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void T_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
   /**
    * @brief Forward-right diagonal with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void T_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
   /**
    * @brief Backward-left diagonal with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void L_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
   /**
    * @brief Backward-right diagonal with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void L_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
   /**
    * @brief Translate left with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void N_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
   /**
    * @brief Translate right with independent PWM values for M1..M4.
    * @param duty1 PWM for M1 front-left, 0..255.
    * @param duty2 PWM for M2 rear-left, 0..255.
-   * @param duty3 PWM for M3 front-right, 0..255.
-   * @param duty4 PWM for M4 rear-right, 0..255.
+   * @param duty3 PWM for M3 rear-right, 0..255.
+   * @param duty4 PWM for M4 front-right, 0..255.
    */
   void N_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -478,8 +478,8 @@ struct TungLamDriveConfig {
 struct TungLamWheelVelocity {
   float m1Mps;  ///< M1 front-left wheel-perimeter speed.
   float m2Mps;  ///< M2 rear-left wheel-perimeter speed.
-  float m3Mps;  ///< M3 front-right wheel-perimeter speed.
-  float m4Mps;  ///< M4 rear-right wheel-perimeter speed.
+  float m3Mps;  ///< M3 rear-right wheel-perimeter speed.
+  float m4Mps;  ///< M4 front-right wheel-perimeter speed.
 };
 
 /**

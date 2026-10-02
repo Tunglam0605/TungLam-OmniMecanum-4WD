@@ -57,14 +57,24 @@ Legacy `TungLam_Control_MotorV5` vẫn giữ hành vi lịch sử.
 ```text
                      ĐẦU XE
 
-              M1             M3
+              M1             M4
           trước-trái     trước-phải
 
-              M2             M4
+              M2             M3
            sau-trái       sau-phải
 
                       ĐUÔI XE
 ```
+
+Quy ước rất quan trọng:
+
+```text
+Thứ tự vector/code       : M1, M2, M3, M4
+Vị trí tương ứng         : trước-trái, sau-trái, sau-phải, trước-phải
+Theo chiều kim đồng hồ   : M1 -> M4 -> M3 -> M2
+```
+
+Mọi công thức `v1..v4` trong tài liệu đều theo **thứ tự channel M1..M4**, không theo thứ tự vòng quanh chassis.
 
 Các kích thước:
 
@@ -266,8 +276,8 @@ thì:
 ```text
 v1 = vx - vy - K*wz
 v2 = vx + vy - K*wz
-v3 = vx + vy + K*wz
-v4 = vx - vy + K*wz
+v3 = vx - vy + K*wz
+v4 = vx + vy + K*wz
 ```
 
 Trong đó:
@@ -275,8 +285,8 @@ Trong đó:
 ```text
 v1 → M1 trước-trái
 v2 → M2 sau-trái
-v3 → M3 trước-phải
-v4 → M4 sau-phải
+v3 → M3 sau-phải
+v4 → M4 trước-phải
 ```
 
 API:
@@ -307,7 +317,7 @@ vx = 0
 vy > 0
 wz = 0
 
-→ - + + -
+→ - + - +
 ```
 
 ## Chỉ quay trái / CCW
@@ -320,7 +330,7 @@ wz > 0
 → - - + +
 ```
 
-Đây là các vector của bố trí Mecanum-X hiện tại: M1 trước-trái, M2 sau-trái, M3 trước-phải, M4 sau-phải. Legacy `TungLam_Control_MotorV5` vẫn giữ vector lịch sử để tương thích code cũ.
+Đây vẫn là các vector vật lý đã được chứng minh từ V5, chỉ chuẩn hóa dấu Cartesian của modern API.
 
 ---
 
@@ -333,7 +343,7 @@ vx =
     (v1 + v2 + v3 + v4) / 4
 
 vy =
-    (-v1 + v2 + v3 - v4) / 4
+    (-v1 + v2 - v3 + v4) / 4
 
 wz =
     (-v1 - v2 + v3 + v4) / (4*K)
@@ -382,7 +392,7 @@ Các vector normalized:
 
 ```text
 +vx → + + - -
-+vy → - + + -
++vy → - + - +
 +wz → - - - -
 ```
 

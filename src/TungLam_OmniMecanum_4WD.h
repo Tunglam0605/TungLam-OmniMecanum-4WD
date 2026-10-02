@@ -22,13 +22,13 @@
                          +X
                           ^
 
-             M1                        M3
+             M1                        M4
         TRƯỚC-TRÁI                TRƯỚC-PHẢI
-           PWM D5                    PWM D7
+           PWM D5                    PWM D8
 
-             M2                        M4
+             M2                        M3
           SAU-TRÁI                 SAU-PHẢI
-           PWM D6                    PWM D8
+           PWM D6                    PWM D7
 
   CHÂN PWM / DIR
   ------------------------------------------------------------------------------
@@ -184,8 +184,8 @@ class TungLam_Control_MotorV5 {
    * @brief Chạy tiến với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void Tien(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -220,8 +220,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi chéo tiến-trái với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void T_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -229,8 +229,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi chéo tiến-phải với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void T_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -238,8 +238,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi chéo lùi-trái với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void L_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -247,8 +247,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi chéo lùi-phải với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void L_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -256,8 +256,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi ngang trái với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void N_Trai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -265,8 +265,8 @@ class TungLam_Control_MotorV5 {
    * @brief Đi ngang phải với PWM riêng cho từng bánh.
    * @param duty1 PWM M1 trước-trái, 0..255.
    * @param duty2 PWM M2 sau-trái, 0..255.
-   * @param duty3 PWM M3 trước-phải, 0..255.
-   * @param duty4 PWM M4 sau-phải, 0..255.
+   * @param duty3 PWM M3 sau-phải, 0..255.
+   * @param duty4 PWM M4 trước-phải, 0..255.
    */
   void N_Phai(uint8_t duty1, uint8_t duty2, uint8_t duty3, uint8_t duty4);
 
@@ -374,8 +374,8 @@ struct TungLamDriveConfig {
 struct TungLamWheelVelocity {
   float m1Mps;  ///< Vận tốc M1 trước-trái [m/s].
   float m2Mps;  ///< Vận tốc M2 sau-trái [m/s].
-  float m3Mps;  ///< Vận tốc M3 trước-phải [m/s].
-  float m4Mps;  ///< Vận tốc M4 sau-phải [m/s].
+  float m3Mps;  ///< Vận tốc M3 sau-phải [m/s].
+  float m4Mps;  ///< Vận tốc M4 trước-phải [m/s].
 };
 
 /** @brief Vận tốc thân robot theo body frame chuẩn. */
@@ -427,7 +427,7 @@ class TungLamDrive4WD {
 
   /**
    * @brief Đảo chiều logic riêng một motor mà không cần sửa phương trình động học.
-   * @param wheel Số motor: 1=M1 trước-trái, 2=M2 sau-trái, 3=M3 trước-phải, 4=M4 sau-phải.
+   * @param wheel Số motor: 1=M1 trước-trái, 2=M2 sau-trái, 3=M3 sau-phải, 4=M4 trước-phải.
    * @param inverted true = đảo chiều motor; false = dùng chiều mặc định.
    *
    * Dùng khi một motor lắp/đấu ngược so với quy ước của thư viện.
@@ -444,8 +444,8 @@ class TungLamDrive4WD {
    * @brief Điều khiển trực tiếp 4 bánh bằng PWM có dấu.
    * @param m1 M1 trước-trái: -255..255.
    * @param m2 M2 sau-trái: -255..255.
-   * @param m3 M3 trước-phải: -255..255.
-   * @param m4 M4 sau-phải: -255..255.
+   * @param m3 M3 sau-phải: -255..255.
+   * @param m4 M4 trước-phải: -255..255.
    *
    * Dương = tiến logic, âm = lùi logic, 0 = dừng bánh.
    * Phù hợp khi bạn tự viết thuật toán động học/điều khiển riêng.

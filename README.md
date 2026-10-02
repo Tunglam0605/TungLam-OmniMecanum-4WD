@@ -109,13 +109,13 @@ flowchart LR
                            +X
                             ↑
 
-              M1                         M3
+              M1                         M4
          TRƯỚC-TRÁI                  TRƯỚC-PHẢI
-            PWM D5                     PWM D7
+            PWM D5                     PWM D8
 
-              M2                         M4
+              M2                         M3
           SAU-TRÁI                    SAU-PHẢI
-            PWM D6                     PWM D8
+            PWM D6                     PWM D7
 
                             ↓
                      ĐUÔI XE / REAR
@@ -237,8 +237,8 @@ IDE có thể đọc từ header:
 wheel:
 1 = M1 trước-trái
 2 = M2 sau-trái
-3 = M3 trước-phải
-4 = M4 sau-phải
+3 = M3 sau-phải
+4 = M4 trước-phải
 
 inverted:
 true  = đảo chiều
@@ -365,14 +365,16 @@ robot.drive(150, -100, 0);   // tiến-phải
 
 Với Mecanum-X:
 
-> Thứ tự bánh nhìn từ trên: **M1 trước-trái → M3 trước-phải → M4 sau-phải → M2 sau-trái** (theo chiều kim đồng hồ: **1 → 3 → 4 → 2**).
+> **Thứ tự vector trong code luôn là `[M1, M2, M3, M4]` = [trước-trái, sau-trái, sau-phải, trước-phải].**
+> Thứ tự vật lý theo chiều kim đồng hồ nhìn từ trên là **M1 → M4 → M3 → M2**.
+> Basis dưới đây giữ parity với V5 đã chạy đúng trên robot thật.
 
 | Chuyển động | M1 | M2 | M3 | M4 |
 |---|---:|---:|---:|---:|
 | +vx tiến | + | + | + | + |
 | -vx lùi | - | - | - | - |
-| +vy trái | - | + | + | - |
-| -vy phải | + | - | - | + |
+| +vy trái | - | + | - | + |
+| -vy phải | + | - | + | - |
 | +wz CCW | - | - | + | + |
 | -wz CW | + | + | - | - |
 

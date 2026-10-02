@@ -136,13 +136,13 @@ Top view:
                            +vx
                             ↑
 
-              M1                         M3
+              M1                         M4
          FRONT-LEFT                 FRONT-RIGHT
-            PWM D5                     PWM D7
+            PWM D5                     PWM D8
 
-              M2                         M4
+              M2                         M3
           REAR-LEFT                  REAR-RIGHT
-            PWM D6                     PWM D8
+            PWM D6                     PWM D7
 
                             ↓
                       REAR / ĐUÔI XE
@@ -290,8 +290,8 @@ M4 forward → M4 reverse
 |---|---|
 | M1 | Front-left |
 | M2 | Rear-left |
-| M3 | Front-right |
-| M4 | Rear-right |
+| M3 | Rear-right |
+| M4 | Front-right |
 
 If one motor spins backward relative to the logical direction:
 
@@ -339,20 +339,23 @@ robot.drive(0, 0, 120);     // rotate left / CCW (+wz)
 robot.drive(150, -100, 0);  // forward-right (+vx, -vy)
 ```
 
-The modern Mecanum mixer follows the physical Mecanum-X layout `M1 front-left, M2 rear-left, M3 front-right, M4 rear-right`. Viewed from above, clockwise wheel order is **M1 → M3 → M4 → M2**:
+The modern Mecanum mixer is intentionally aligned with the proven V5 motion basis.
+
+> **Code-vector order is always `[M1, M2, M3, M4]` = [front-left, rear-left, rear-right, front-right].**
+> Clockwise physical order viewed from above is **M1 → M4 → M3 → M2**.
 
 | Motion | M1 | M2 | M3 | M4 |
 |---|---:|---:|---:|---:|
 | Forward | + | + | + | + |
 | Backward | - | - | - | - |
-| Strafe left (+vy) | - | + | + | - |
-| Strafe right (-vy) | + | - | - | + |
+| Strafe left (+vy) | - | + | - | + |
+| Strafe right (-vy) | + | - | + | - |
 | Rotate left / CCW (+wz) | - | - | + | + |
 | Rotate right / CW (-wz) | + | + | - | - |
-| Forward-right | + | 0 | 0 | + |
-| Forward-left | 0 | + | + | 0 |
-| Backward-right | 0 | - | - | 0 |
-| Backward-left | - | 0 | 0 | - |
+| Forward-right | + | 0 | + | 0 |
+| Forward-left | 0 | + | 0 | + |
+| Backward-right | 0 | - | 0 | - |
+| Backward-left | - | 0 | - | 0 |
 
 When a combined vector exceeds PWM 255, all wheels are scaled proportionally so the motion direction is preserved.
 

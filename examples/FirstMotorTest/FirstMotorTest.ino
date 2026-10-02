@@ -9,8 +9,8 @@
  * - Xác nhận vị trí:
  *     M1 = trước-trái
  *     M2 = sau-trái
- *     M3 = trước-phải
- *     M4 = sau-phải
+ *     M3 = sau-phải
+ *     M4 = trước-phải
  *
  * Sketch sẽ test từng bánh riêng lẻ theo chiều tiến rồi chiều lùi.
  * Đây là bước commissioning nên làm trước khi test chuyển động Mecanum/Omni.
