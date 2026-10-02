@@ -1,10 +1,13 @@
-# English-commented examples
+# English example mirrors
 
-The sketches in this folder are the international English-commented mirrors of the Vietnamese-first Arduino examples in `/examples`.
+The four Arduino IDE examples under `examples/` use Vietnamese-first comments.
+This directory contains English-commented mirrors with identical executable code.
 
-- The executable code is intended to be identical.
-- Only comments/documentation differ.
-- CI/localization audits compare the two trees after stripping comments and whitespace.
-- Arduino IDE exposes the Vietnamese-first `/examples` by default.
+Main templates:
 
-For Vietnamese learners, use the normal examples under `/examples`.
+- `FirstMotorTest`
+- `RobotTemplate`
+- `PS2RobotControl`
+- `VelocityControlTemplate`
+
+Older detailed demos are preserved in `../reference-examples-en/`.

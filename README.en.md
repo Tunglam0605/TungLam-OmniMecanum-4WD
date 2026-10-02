@@ -523,41 +523,30 @@ TungLam_OmniMecanum_4WD
 4 motors
 ```
 
-## PS2 robot-control examples
+## PS2 robot-control template
 
-Only **two focused PS2 driving styles** are provided:
+The Arduino IDE menu keeps one primary PS2 robot template: `PS2RobotControl`.
 
-### 1. `PS2RobotControl` — recommended
-
-This follows the older RoboBall/V5 control style:
+Its structure is intentionally application-ready:
 
 ```text
-LEFT stick
-  UP/DOWN    → forward/backward
-  LEFT/RIGHT → strafe left/right
-
-RIGHT stick
-  LEFT/RIGHT → rotate left/right
-                   ↑
-              HIGHER PRIORITY
+loop()
+  ├─ ps2.update()
+  ├─ robot.update()
+  ├─ PS2 lost -> safeStop()
+  ├─ handleDrive()
+  │    ├─ right LEFT/RIGHT -> rotation, higher priority
+  │    └─ left stick -> forward/backward/strafe
+  └─ handleButtons()
+       ├─ onCrossPressed()
+       ├─ onCirclePressed()
+       ├─ onR1Held()
+       └─ onR1Released()
 ```
 
-If the left stick is held UP and the right stick is pushed RIGHT, rotation overrides translation. When the right stick returns to center, forward motion resumes because the left stick is still held UP.
+Copy the sketch as a project base. The proven RoboBall/V5 drive policy is already implemented; users normally fill only the **USER FUNCTIONS** at the bottom for grippers, lifts, servos or other mechanisms.
 
-The new example expresses this priority explicitly with `return` instead of relying on right-stick `if` statements appearing later in the source.
-
-### 2. `PS2RobotVectorMix` — advanced
-
-Use this when both sticks should affect the chassis simultaneously:
-
-```text
-LEFT stick  → vx / vy
-RIGHT stick → wz
-      ↓
-robot.drive(vx, vy, wz)
-```
-
-Holding LEFT UP while pushing RIGHT RIGHT makes the robot translate forward while rotating right.
+Older PS2/vector-mix demos remain under `extras/reference-examples/` for reference without cluttering the main Arduino IDE menu.
 
 ## Mega 2560 wiring
 
@@ -803,24 +792,28 @@ For most L298N + DC motor applications, start with **High7k8Hz**.
 
 # 🧩 Examples included
 
-
-> The Arduino IDE examples in `examples/` use Vietnamese-first comments. Equivalent English-commented copies are available under **[extras/examples-en](extras/examples-en/)**. Their executable code is regression-checked to remain identical.
-
+The Arduino IDE menu intentionally exposes only **four project-oriented templates**. Vietnamese comments are in `examples/`; executable-equivalent English mirrors are in `extras/examples-en/`.
 
 | Example | Purpose |
 |---|---|
-| **FirstMotorTest** | First-time wiring and polarity commissioning |
-| **BasicMotion** | Basic legacy-compatible motion |
-| **MecanumDrive** | Modern Mecanum control |
-| **OmniXDrive** | Modern Omni X-drive |
-| **PerWheelControl** | Direct signed M1..M4 control |
-| **MetricKinematics** | Motor/chassis config, SI m/s + rad/s, inverse/forward kinematics |
-| **StudentQuickStart** | Recommended beginner path: Smart Safety + SI velocity |
-| **ActiveBrake** | ABS / reverse braking |
-| **ActiveBrakeNonBlocking** | Non-blocking brake demonstration |
-| **LegacyV5DropIn** | Old V5 include/class compatibility |
-| **LegacyApiNewHeader** | Legacy class through new main header |
-| **LegacyApiSurface** | Compile regression for the full V5 API |
+| **FirstMotorTest** | Commission M1..M4 placement and polarity before floor testing |
+| **RobotTemplate** | General skeleton; fill `readInputs()`, `motionAllowed()`, and `handleMechanisms()` |
+| **PS2RobotControl** | Recommended PS2/RoboBall template; drive logic is ready, fill mechanism hooks |
+| **VelocityControlTemplate** | ROS2/Serial/PC/autonomous template; implement `readVelocityCommand()` |
+
+The new rule is simple:
+
+```text
+example = reusable project skeleton
+        != one-demo-per-API
+```
+
+Previous ABS, IK/FK, Omni, legacy, per-wheel and vector-mix demos are preserved under:
+
+```text
+extras/reference-examples/
+extras/reference-examples-en/
+```
 
 ---
 
@@ -978,12 +971,13 @@ TungLam-OmniMecanum-4WD/
 │   └── TungLam_Control_MotorV5.h
 ├── examples/
 │   ├── FirstMotorTest/
-│   ├── MecanumDrive/
-│   ├── OmniXDrive/
-│   ├── PerWheelControl/
-│   ├── ActiveBrake/
-│   └── legacy compatibility examples...
+│   ├── RobotTemplate/
+│   ├── PS2RobotControl/
+│   └── VelocityControlTemplate/
 ├── extras/
+│   ├── examples-en/
+│   ├── reference-examples/
+│   ├── reference-examples-en/
 │   └── WIRING.md
 ├── .github/
 │   ├── workflows/
@@ -1008,6 +1002,8 @@ TungLam-OmniMecanum-4WD/
 - **0.9.0** — standard right-handed body frame + SI kinematics + physical motor/chassis model
 - **0.9.1** — Vietnamese-first docs/comments with synchronized English reference material
 - **0.9.2** — complete Arduino IDE API hint coverage for all 65 public functions
+- **0.10.x** — Smart Safety, PS2 integration and V5 baseline hardening
+- **0.11.0** — project-template examples; detailed demos moved to references
 - **1.0.0** — reserved for the stable milestone
 
 ---

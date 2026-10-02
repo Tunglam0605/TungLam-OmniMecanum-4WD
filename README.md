@@ -675,39 +675,28 @@ TungLam_OmniMecanum_4WD
 
 ## Ví dụ điều khiển xe bằng PS2
 
-Repo chỉ giữ **2 kiểu điều khiển PS2 rõ ràng**:
+Chỉ giữ **một template PS2 chính** trong menu Arduino IDE: `PS2RobotControl`.
 
-### 1. `PS2RobotControl` — khuyến nghị
-
-Đây là kiểu bám sát các project RoboBall/V5 cũ:
+Template đã chia sẵn:
 
 ```text
-LEFT joystick
-  UP/DOWN    → tiến/lùi
-  LEFT/RIGHT → ngang trái/phải
-
-RIGHT joystick
-  LEFT/RIGHT → xoay trái/phải
-                 ↑
-            ƯU TIÊN CAO HƠN
+loop()
+  ├─ ps2.update()
+  ├─ robot.update()
+  ├─ mất PS2 -> safeStop()
+  ├─ handleDrive()
+  │    ├─ JOY phải LEFT/RIGHT -> quay, priority cao
+  │    └─ JOY trái -> tiến/lùi/ngang
+  └─ handleButtons()
+       ├─ onCrossPressed()
+       ├─ onCirclePressed()
+       ├─ onR1Held()
+       └─ onR1Released()
 ```
 
-Nếu đang giữ joystick trái **UP** để tiến rồi gạt joystick phải **RIGHT**, robot chuyển sang xoay phải. Khi thả joystick phải về tâm, robot quay lại tiến vì joystick trái vẫn đang giữ UP.
+Người dùng có thể copy nguyên sketch; phần lái xe đã hoạt động sẵn theo baseline RoboBall/V5. Phần cần sửa chủ yếu là các **USER FUNCTIONS** ở cuối file để gắn gripper, nâng/hạ, servo, bắn bóng hoặc cơ cấu riêng.
 
-Code mới biểu diễn priority bằng `return`, thay vì phụ thuộc việc các `if` của joystick phải được đặt sau joystick trái như code cũ.
-
-### 2. `PS2RobotVectorMix` — nâng cao
-
-Dùng khi muốn hai joystick tác động đồng thời:
-
-```text
-LEFT joystick  → vx / vy
-RIGHT joystick → wz
-       ↓
-robot.drive(vx, vy, wz)
-```
-
-Ví dụ giữ LEFT UP và gạt RIGHT RIGHT thì robot **vừa tiến vừa quay phải**.
+Các ví dụ PS2/vector-mix cũ vẫn được lưu trong `extras/reference-examples/` để tra cứu nhưng không làm rối menu chính.
 
 ## Đấu dây Mega 2560
 
@@ -735,30 +724,30 @@ Cả hai example đều:
 
 # 🧩 Ví dụ đi kèm
 
-| Ví dụ | Mục đích |
+Menu Arduino IDE chỉ giữ **4 template có mục đích rõ ràng**:
+
+| Ví dụ | Dùng khi nào |
 |---|---|
-| **FirstMotorTest** | Kiểm tra M1..M4 và chiều quay |
-| **BasicMotion** | Chuyển động cơ bản kiểu V5 |
-| **MecanumDrive** | Dùng modern Mecanum |
-| **OmniXDrive** | Dùng Omni X-drive |
-| **PerWheelControl** | Điều khiển trực tiếp từng bánh |
-| **MetricKinematics** | Khai báo motor/chassis, m/s, rad/s, IK/FK |
-| **StudentQuickStart** | Ví dụ khuyến nghị: Smart Safety + driveVelocity() tối giản |
-| **PS2RobotControl** | PS2 khuyến nghị: joystick phải override joystick trái, bám phong cách RoboBall/V5 |
-| **PS2RobotVectorMix** | PS2 nâng cao: vừa tịnh tiến vừa quay bằng vx/vy/wz |
-| **ActiveBrake** | ABS |
-| **ActiveBrakeNonBlocking** | ABS không block chương trình |
-| **LegacyV5DropIn** | Giữ nguyên code V5 |
-| **LegacyApiNewHeader** | Dùng V5 qua header mới |
-| **LegacyApiSurface** | Kiểm tra toàn bộ API legacy |
+| **FirstMotorTest** | Commissioning: xác nhận M1..M4 và chiều quay trước khi đặt robot xuống sàn |
+| **RobotTemplate** | Template tổng quát: copy project rồi điền `readInputs()`, `motionAllowed()`, `handleMechanisms()` |
+| **PS2RobotControl** | Template khuyến nghị cho robot PS2/RoboBall; drive logic đã xong, chỉ điền các hàm cơ cấu |
+| **VelocityControlTemplate** | Template cho ROS2/Serial/PC/auto mode; chỉ cần hiện thực `readVelocityCommand()` |
 
-Mặc định các ví dụ trong `examples/` dùng **comment tiếng Việt**.
-
-Bản comment tiếng Anh được lưu tại:
+Triết lý mới:
 
 ```text
-extras/examples-en/
+example = project skeleton dùng thật
+        ≠ demo từng API nhỏ lẻ
 ```
+
+Các ví dụ cũ về ABS, IK/FK, Omni, legacy API, per-wheel và vector mix **không bị xóa**. Chúng được chuyển sang:
+
+```text
+extras/reference-examples/
+extras/reference-examples-en/
+```
+
+Bản comment tiếng Anh của bốn template chính nằm tại `extras/examples-en/` và được regression-check để giữ executable code giống bản tiếng Việt.
 
 ---
 

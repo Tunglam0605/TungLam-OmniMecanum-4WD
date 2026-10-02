@@ -7,6 +7,21 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.11.0] - 2026-10-02
+
+### Project-template examples
+- Reduced the Arduino IDE menu from fourteen API-focused examples to four reusable project templates: `FirstMotorTest`, `RobotTemplate`, `PS2RobotControl`, and `VelocityControlTemplate`.
+- Added `RobotTemplate` with separated input, drive, safety and mechanism hooks.
+- Reworked `PS2RobotControl` into an application skeleton with the proven right-stick rotation priority plus ready-made button/mechanism hooks.
+- Added `VelocityControlTemplate` for ROS2/Serial/PC/autonomous command sources; users only implement `readVelocityCommand()`.
+- Simplified `FirstMotorTest` while preserving low-PWM M1..M4 commissioning.
+- Moved the previous detailed demos to `extras/reference-examples/` and their English mirrors to `extras/reference-examples-en/` instead of deleting them.
+
+### Compatibility
+- No motor HAL, timer, Mecanum/Omni equations, braking, SI kinematics or public API behavior changed.
+- V5 wheel mapping and PS2 right-stick priority remain regression-protected.
+- Hardware validation is still required before the 1.0.0 stable release.
+
 ## [0.10.5] - 2026-10-02
 
 ### Full V5 baseline audit

@@ -1,71 +1,16 @@
 /**
  * @file PS2RobotControl.ino
- * @brief Ví dụ KHUYẾN NGHỊ: điều khiển đế robot theo phong cách RoboBall/V5.
+ * @brief Template robot + PS2 khuyến nghị cho RoboBall/Mecanum.
  *
- * MỤC TIÊU
- * ==========================================================================
- * Ví dụ này chỉ tập trung vào LOGIC LÁI XE, không trộn thêm cơ cấu phụ:
+ * JOY trái : tiến/lùi/ngang.
+ * JOY phải : quay trái/phải và có priority cao hơn JOY trái.
  *
- *   JOYSTICK TRÁI = chuyển động chính
- *     UP    -> tiến
- *     DOWN  -> lùi
- *     LEFT  -> ngang trái
- *     RIGHT -> ngang phải
- *
- *   JOYSTICK PHẢI = quay, ƯU TIÊN CAO HƠN joystick trái
- *     LEFT  -> xoay trái / CCW
- *     RIGHT -> xoay phải / CW
- *
- * HÀNH VI QUAN TRỌNG
- * ==========================================================================
- * 1. Giữ joystick trái UP -> robot tiến.
- * 2. Vẫn giữ UP, gạt joystick phải RIGHT -> robot xoay phải.
- * 3. Thả joystick phải về CENTER -> robot tiếp tục tiến vì joystick trái
- *    vẫn đang giữ UP.
- *
- * Đây chính là priority đã xuất hiện trong các project RoboBall cũ, nhưng
- * code mới biểu diễn rõ bằng return thay vì phụ thuộc câu if nào chạy sau.
- *
- * ĐẤU DÂY PS2 - ARDUINO MEGA 2560
- * ==========================================================================
- *   PS2 DAT/MISO -> D50
- *   PS2 CMD/MOSI -> D51
- *   PS2 CLK/SCK  -> D52
- *   PS2 CS/ATT   -> D53
- *   PS2 GND      -> GND chung
- *   PS2 VCC      -> nguồn đúng theo receiver
- *
- * MOTOR BASELINE V5
- * ==========================================================================
- *   M1 = trước-trái  = PWM D5
- *   M2 = sau-trái    = PWM D6
- *   M3 = sau-phải    = PWM D7
- *   M4 = trước-phải  = PWM D8
- *
- *   Thứ tự code    : M1, M2, M3, M4
- *   Theo kim đồng hồ: M1 -> M4 -> M3 -> M2
- *
- * AN TOÀN
- * ==========================================================================
- * - Mất PS2 -> robot.stop() ngay.
- * - Joystick phải chỉ chiếm quyền khi LEFT/RIGHT.
- * - CENTER/UNKNOWN joystick trái -> stop.
- * - Không dùng delay().
- * - Poll PS2 mặc định 50 Hz.
- *
- * DEBUG
- * ==========================================================================
- * Đổi PS2_ROBOT_DEBUG = 1 để bật ps2.debug(Serial).
- * Debug chỉ in khi state thay đổi; production để = 0.
- *
- * Muốn học button(), pressed(), released(), raw analog hay reconnect:
- * xem các example trong thư viện TungLam_PS2.
+ * Các hàm onCrossPressed(), onCirclePressed(), onR1Held()... đã viết sẵn.
+ * Người dùng chỉ cần điền chức năng cơ cấu vào phần TODO.
  */
 
 #include <TungLam_PS2.h>
 #include <TungLam_OmniMecanum_4WD.h>
-
-#define PS2_ROBOT_DEBUG 0
 
 TungLamPS2 ps2;
 TungLamDrive4WD robot;
@@ -74,37 +19,48 @@ constexpr uint8_t PS2_CS_PIN = 53;
 constexpr uint8_t MOVE_SPEED = 180;
 constexpr uint8_t TURN_SPEED = 155;
 
+void setupRobot();
+void setupController();
+void handleDrive();
+void handleButtons();
+void safeStop();
+
+void onCrossPressed();
+void onCirclePressed();
+void onR1Held();
+void onR1Released();
+
 void setup() {
-#if PS2_ROBOT_DEBUG
-  Serial.begin(115200);
-#endif
-
-  robot.begin();
-  robot.setChassis(TungLamChassis::MecanumX);
-
-  ps2.begin(PS2_CS_PIN);
-  ps2.setPollRate(PS2PollRate::Hz50);
+  setupRobot();
+  setupController();
 }
 
 void loop() {
   ps2.update();
   robot.update();
 
-#if PS2_ROBOT_DEBUG
-  ps2.debug(Serial);
-#endif
-
-  // FAIL-SAFE: mất receiver/tay cầm thì không giữ lệnh cũ.
   if (!ps2.connected()) {
-    robot.stop();
+    safeStop();
     return;
   }
 
-  // ========================================================================
-  // PRIORITY 1 - JOYSTICK PHẢI: XOAY
-  // ========================================================================
-  // Nếu có lệnh quay, thực hiện ngay và return.
-  // Vì vậy joystick phải luôn ghi đè joystick trái.
+  handleDrive();
+  handleButtons();
+}
+
+void setupRobot() {
+  robot.begin(TungLamPwmMode::High7k8Hz);
+  robot.setChassis(TungLamChassis::MecanumX);
+  robot.stop();
+}
+
+void setupController() {
+  ps2.begin(PS2_CS_PIN);
+  ps2.setPollRate(PS2PollRate::Hz50);
+}
+
+void handleDrive() {
+  // PRIORITY 1: joystick phải chiếm quyền khi có lệnh quay.
   switch (ps2.rightDirection()) {
     case PS2StickDirection::Left:
       robot.rotateLeft(TURN_SPEED);
@@ -115,13 +71,10 @@ void loop() {
       return;
 
     default:
-      // UP/DOWN/CENTER/UNKNOWN không chiếm quyền điều khiển.
       break;
   }
 
-  // ========================================================================
-  // PRIORITY 2 - JOYSTICK TRÁI: TIẾN/LÙI/NGANG
-  // ========================================================================
+  // PRIORITY 2: joystick trái điều khiển tịnh tiến.
   switch (ps2.leftDirection()) {
     case PS2StickDirection::Up:
       robot.forward(MOVE_SPEED);
@@ -145,4 +98,50 @@ void loop() {
       robot.stop();
       break;
   }
+}
+
+void handleButtons() {
+  if (ps2.pressed(PS2Button::Cross)) {
+    onCrossPressed();
+  }
+
+  if (ps2.pressed(PS2Button::Circle)) {
+    onCirclePressed();
+  }
+
+  if (ps2.button(PS2Button::R1)) {
+    onR1Held();
+  }
+
+  if (ps2.released(PS2Button::R1)) {
+    onR1Released();
+  }
+
+  // Thêm L1/L2/R2/START/SELECT... theo cùng pattern khi cần.
+}
+
+void safeStop() {
+  robot.stop();
+
+  // TODO: tắt thêm cơ cấu nguy hiểm nếu project có.
+}
+
+// ============================================================================
+// USER FUNCTIONS - điền chức năng cơ cấu tại đây.
+// ============================================================================
+
+void onCrossPressed() {
+  // TODO: ví dụ đóng/mở gripper.
+}
+
+void onCirclePressed() {
+  // TODO: ví dụ đổi mode.
+}
+
+void onR1Held() {
+  // TODO: ví dụ nâng cơ cấu trong lúc giữ R1.
+}
+
+void onR1Released() {
+  // TODO: ví dụ dừng cơ cấu nâng khi nhả R1.
 }
