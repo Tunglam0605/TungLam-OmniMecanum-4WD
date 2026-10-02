@@ -504,59 +504,37 @@ Omni mechanical layouts vary more than Mecanum chassis. Always commission each w
 
 # 🎮 Using a PS2 controller
 
-The motor library does **not** require PS2X. PS2 is an optional input layer.
+The drive library intentionally keeps the controller as an independent input layer:
 
 ```text
 PS2 controller
-     ↓
-PS2X_lib
-     ↓
-your application logic
-     ↓
+      ↓
+TungLam_PS2
+      ↓
+filtered joystick / button state
+      ↓
+application mapping
+      ↓
+vx, vy, wz
+      ↓
 TungLam_OmniMecanum_4WD
-     ↓
-motors
+      ↓
+4 motors
 ```
 
-Minimal integration idea:
+A complete integration example is available at **`examples/PS2RobotControl`** and is validated against `TungLam_PS2 v0.4.0`.
 
-```cpp
-#include <PS2X_lib.h>
-#include <TungLam_OmniMecanum_4WD.h>
+On Arduino Mega 2560, the default pin groups do not conflict:
 
-PS2X ps2x;
-TungLamDrive4WD robot;
+| Block | Pins |
+|---|---|
+| PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, e.g. D53 CS |
+| Motor PWM | D5, D6, D7, D8 |
+| Motor DIR | D30..D37 |
 
-void setup() {
-  robot.begin();
-  robot.setChassis(TungLamChassis::MecanumX);
+The example maps the left stick to translation, the right stick to rotation, L1/R1 to speed modes, START to drive enable, and immediately calls `robot.stop()` if PS2 connectivity is lost. Optional `ps2.debug(Serial)` output is event-driven rather than continuously streamed.
 
-  // Configure PS2X pins here using your own wiring.
-}
-
-void loop() {
-  ps2x.read_gamepad();
-
-  int16_t vx = 0;
-  int16_t vy = 0;
-  int16_t wz = 0;
-
-  // Convert PS2 sticks/buttons into vx, vy, wz here.
-
-  robot.drive(vx, vy, wz);
-}
-```
-
-This separation keeps the drive library usable with:
-
-- PS2
-- Bluetooth
-- ESP-NOW
-- RC receiver
-- Serial commands
-- ROS2
-- Computer vision
-- Autonomous navigation
+These mappings belong only to the example. The motor core remains reusable with Bluetooth, ESP-NOW, RC, ROS2, vision, autonomous navigation, or any other input source.
 
 ---
 

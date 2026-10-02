@@ -651,23 +651,45 @@ vẫn được giữ để project cũ không phải viết lại.
 
 # 🎮 Tích hợp tay cầm PS2
 
-Thư viện đế không phụ thuộc PS2X.
+Thư viện đế **không phụ thuộc cứng** vào tay cầm. PS2 vẫn là một input layer độc lập:
 
 ```text
-PS2
- ↓
-PS2X_lib
- ↓
-logic joystick
- ↓
+PS2 controller
+      ↓
+TungLam_PS2
+      ↓
+joystick / button state đã lọc
+      ↓
+application mapping
+      ↓
 vx, vy, wz
- ↓
+      ↓
 TungLam_OmniMecanum_4WD
- ↓
-đế robot
+      ↓
+4 motor
 ```
 
-Tách như vậy giúp thư viện dùng được với PS2, Bluetooth, ESP-NOW, RC, ROS2, tự hành hoặc camera/vision.
+Ví dụ đầy đủ nằm tại **`examples/PS2RobotControl`** và dùng `TungLam_PS2 v0.4.0`.
+
+Trên Arduino Mega 2560, hai thư viện không xung đột chân mặc định:
+
+| Khối | Chân |
+|---|---|
+| PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, ví dụ D53 CS |
+| Motor PWM | D5, D6, D7, D8 |
+| Motor DIR | D30..D37 |
+
+Mapping trong example:
+
+- joystick trái → tiến/lùi/ngang;
+- joystick phải trái/phải → quay;
+- giữ L1 → slow;
+- giữ R1 → fast;
+- nhấn START → bật/tắt quyền điều khiển;
+- mất PS2 → `robot.stop()` ngay;
+- debug tùy chọn bằng `ps2.debug(Serial)`, không spam khi state đứng yên.
+
+Mapping trên **chỉ thuộc example**. Core motor vẫn dùng được với Bluetooth, ESP-NOW, RC, ROS2, tự hành, camera/vision hoặc bất kỳ nguồn lệnh nào khác.
 
 ---
 
@@ -682,6 +704,7 @@ Tách như vậy giúp thư viện dùng được với PS2, Bluetooth, ESP-NOW,
 | **PerWheelControl** | Điều khiển trực tiếp từng bánh |
 | **MetricKinematics** | Khai báo motor/chassis, m/s, rad/s, IK/FK |
 | **StudentQuickStart** | Ví dụ khuyến nghị: Smart Safety + driveVelocity() tối giản |
+| **PS2RobotControl** | Điều khiển đế bằng TungLam_PS2: joystick trái/phải, speed button, fail-safe |
 | **ActiveBrake** | ABS |
 | **ActiveBrakeNonBlocking** | ABS không block chương trình |
 | **LegacyV5DropIn** | Giữ nguyên code V5 |

@@ -7,6 +7,21 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.1] - 2026-10-02
+
+### PS2 integration example
+- Added `examples/PS2RobotControl` with detailed Vietnamese comments.
+- Added matching English reference under `extras/examples-en/PS2RobotControl`.
+- Example uses TungLam_PS2 v0.4.0 as an optional input layer, not a hard motor-core dependency.
+- Left stick controls vx/vy; right-stick horizontal direction controls wz.
+- L1/R1 demonstrate held-button speed selection; START demonstrates one-shot button events.
+- Lost PS2 connection immediately calls `robot.stop()`.
+- Optional event-driven PS2 debug can be enabled without adding Serial spam to production builds.
+- Mega compile CI now pins and installs TungLam_PS2 v0.4.0 before compiling all examples.
+
+### Compatibility
+- No motor-control, timer, pin-map, braking, kinematics, modern API, or Legacy V5 behavior changed.
+
 ## [0.10.0] - 2026-10-01
 
 ### Smart control and AVR optimization

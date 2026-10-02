@@ -19,6 +19,13 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr@1.8.8
 
+      - name: Install pinned TungLam_PS2 integration dependency
+        shell: bash
+        run: |
+          git clone --depth 1 --branch v0.4.0 \
+            https://github.com/Tunglam0605/TungLam-PS2-Controller.git \
+            "$RUNNER_TEMP/TungLam_PS2"
+
       - name: Compile every example for Arduino Mega
         shell: bash
         run: |
@@ -26,6 +33,10 @@ jobs:
           for sketch in examples/*; do
             if [ -d "$sketch" ]; then
               echo "=== Compiling $sketch ==="
-              arduino-cli compile --fqbn arduino:avr:mega --library . "$sketch"
+              arduino-cli compile \
+                --fqbn arduino:avr:mega \
+                --library . \
+                --library "$RUNNER_TEMP/TungLam_PS2" \
+                "$sketch"
             fi
           done
