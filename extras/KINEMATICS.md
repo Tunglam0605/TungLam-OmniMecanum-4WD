@@ -266,8 +266,8 @@ thì:
 ```text
 v1 = vx - vy - K*wz
 v2 = vx + vy - K*wz
-v3 = vx - vy + K*wz
-v4 = vx + vy + K*wz
+v3 = vx + vy + K*wz
+v4 = vx - vy + K*wz
 ```
 
 Trong đó:
@@ -307,7 +307,7 @@ vx = 0
 vy > 0
 wz = 0
 
-→ - + - +
+→ - + + -
 ```
 
 ## Chỉ quay trái / CCW
@@ -320,7 +320,7 @@ wz > 0
 → - - + +
 ```
 
-Đây vẫn là các vector vật lý đã được chứng minh từ V5, chỉ chuẩn hóa dấu Cartesian của modern API.
+Đây là các vector của bố trí Mecanum-X hiện tại: M1 trước-trái, M2 sau-trái, M3 trước-phải, M4 sau-phải. Legacy `TungLam_Control_MotorV5` vẫn giữ vector lịch sử để tương thích code cũ.
 
 ---
 
@@ -333,7 +333,7 @@ vx =
     (v1 + v2 + v3 + v4) / 4
 
 vy =
-    (-v1 + v2 - v3 + v4) / 4
+    (-v1 + v2 + v3 - v4) / 4
 
 wz =
     (-v1 - v2 + v3 + v4) / (4*K)
@@ -382,7 +382,7 @@ Các vector normalized:
 
 ```text
 +vx → + + - -
-+vy → - + - +
++vy → - + + -
 +wz → - - - -
 ```
 

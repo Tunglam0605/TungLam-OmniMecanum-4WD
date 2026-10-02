@@ -7,6 +7,31 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.2] - 2026-10-02
+
+### Fixed
+- Corrected the modern Mecanum-X lateral wheel basis to match the physical wheel layout used by the project:
+  - M1 = front-left
+  - M2 = rear-left
+  - M3 = front-right
+  - M4 = rear-right
+  - clockwise from top-left: M1 -> M3 -> M4 -> M2
+- Corrected `+vy` (strafe left) from the incorrect historical `- + - +` pattern to `- + + -`.
+- Corrected `-vy` (strafe right) to `+ - - +`.
+- Corrected modern normalized Mecanum mixing, SI inverse kinematics, and SI forward kinematics consistently.
+- Corrected diagonal modern vectors:
+  - forward-right: `+ 0 0 +`
+  - forward-left: `0 + + 0`
+  - backward-right: `0 - - 0`
+  - backward-left: `- 0 0 -`
+- Updated README, wiring guide, and kinematics guide in both Vietnamese and English.
+- Added compile-time regression assertions for left/right strafe and forward diagonals.
+
+### Compatibility
+- Legacy `TungLam_Control_MotorV5` behavior is intentionally unchanged for drop-in compatibility with historical projects.
+- This fix affects the modern Mecanum API (`drive`, named modern strafe helpers, `driveVelocity`, inverse/forward kinematics).
+- Omni-X equations are unchanged.
+
 ## [0.10.1] - 2026-10-02
 
 ### PS2 integration example

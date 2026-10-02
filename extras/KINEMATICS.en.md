@@ -283,8 +283,8 @@ the wheel-perimeter linear velocities are:
 ```text
 v1 = vx - vy - K*wz
 v2 = vx + vy - K*wz
-v3 = vx - vy + K*wz
-v4 = vx + vy + K*wz
+v3 = vx + vy + K*wz
+v4 = vx - vy + K*wz
 ```
 
 Wheel order:
@@ -324,7 +324,7 @@ vx = 0
 vy > 0
 wz = 0
 
-=> - + - +
+=> - + + -
 ```
 
 Pure CCW rotation:
@@ -337,7 +337,7 @@ wz > 0
 => - - + +
 ```
 
-These are the same physical movement vectors already proven by the original V5 library, but the modern Cartesian signs now follow the standard body frame.
+These vectors follow the physical Mecanum-X wheel layout above. The legacy `TungLam_Control_MotorV5` API intentionally keeps its historical vectors for drop-in compatibility.
 
 ---
 
@@ -350,7 +350,7 @@ vx =
     (v1 + v2 + v3 + v4) / 4
 
 vy =
-    (-v1 + v2 - v3 + v4) / 4
+    (-v1 + v2 + v3 - v4) / 4
 
 wz =
     (-v1 - v2 + v3 + v4) / (4*K)

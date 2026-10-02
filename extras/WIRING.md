@@ -220,8 +220,8 @@ Các vector vật lý chính:
 Tiến            + + + +
 Lùi             - - - -
 
-Trái            - + - +
-Phải            + - + -
+Trái            - + + -
+Phải            + - - +
 
 Quay trái CCW   - - + +
 Quay phải CW    + + - -
@@ -230,10 +230,10 @@ Quay phải CW    + + - -
 Đường chéo:
 
 ```text
-Tiến-phải       + 0 + 0
-Tiến-trái       0 + 0 +
-Lùi-phải        0 - 0 -
-Lùi-trái        - 0 - 0
+Tiến-phải       + 0 0 +
+Tiến-trái       0 + + 0
+Lùi-phải        0 - - 0
+Lùi-trái        - 0 0 -
 ```
 
 Nếu robot không đi ngang đúng sau khi đã xác nhận polarity từng motor, hãy kiểm tra **hướng lắp bánh Mecanum** trước khi sửa code.

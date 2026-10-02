@@ -339,20 +339,20 @@ robot.drive(0, 0, 120);     // rotate left / CCW (+wz)
 robot.drive(150, -100, 0);  // forward-right (+vx, -vy)
 ```
 
-The modern Mecanum mixer is intentionally aligned with the proven V5 motion basis:
+The modern Mecanum mixer follows the physical Mecanum-X layout `M1 front-left, M2 rear-left, M3 front-right, M4 rear-right`. Viewed from above, clockwise wheel order is **M1 → M3 → M4 → M2**:
 
 | Motion | M1 | M2 | M3 | M4 |
 |---|---:|---:|---:|---:|
 | Forward | + | + | + | + |
 | Backward | - | - | - | - |
-| Strafe left (+vy) | - | + | - | + |
-| Strafe right (-vy) | + | - | + | - |
+| Strafe left (+vy) | - | + | + | - |
+| Strafe right (-vy) | + | - | - | + |
 | Rotate left / CCW (+wz) | - | - | + | + |
 | Rotate right / CW (-wz) | + | + | - | - |
-| Forward-right | + | 0 | + | 0 |
-| Forward-left | 0 | + | 0 | + |
-| Backward-right | 0 | - | 0 | - |
-| Backward-left | - | 0 | - | 0 |
+| Forward-right | + | 0 | 0 | + |
+| Forward-left | 0 | + | + | 0 |
+| Backward-right | 0 | - | - | 0 |
+| Backward-left | - | 0 | 0 | - |
 
 When a combined vector exceeds PWM 255, all wheels are scaled proportionally so the motion direction is preserved.
 

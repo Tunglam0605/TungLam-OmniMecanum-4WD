@@ -186,13 +186,13 @@ Change only the affected wheel number.
 
 ## 8. Mecanum convention
 
-The modern Mecanum mixer intentionally matches the original V5 movement basis.
+The modern Mecanum mixer follows the physical X-layout used by this project. Legacy V5 keeps its historical vectors separately.
 
 ```text
 Forward       + + + +
 Backward      - - - -
-Right         + - + -
-Left          - + - +
+Right         + - - +
+Left          - + + -
 Rotate right  + + - -
 Rotate left   - - + +
 ```
@@ -200,10 +200,10 @@ Rotate left   - - + +
 Diagonals:
 
 ```text
-Forward-right   + 0 + 0
-Forward-left    0 + 0 +
-Backward-right  0 - 0 -
-Backward-left   - 0 - 0
+Forward-right   + 0 0 +
+Forward-left    0 + + 0
+Backward-right  0 - - 0
+Backward-left   - 0 0 -
 ```
 
 Cartesian convention:

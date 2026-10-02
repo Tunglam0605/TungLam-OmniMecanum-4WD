@@ -365,12 +365,14 @@ robot.drive(150, -100, 0);   // tiến-phải
 
 Với Mecanum-X:
 
+> Thứ tự bánh nhìn từ trên: **M1 trước-trái → M3 trước-phải → M4 sau-phải → M2 sau-trái** (theo chiều kim đồng hồ: **1 → 3 → 4 → 2**).
+
 | Chuyển động | M1 | M2 | M3 | M4 |
 |---|---:|---:|---:|---:|
 | +vx tiến | + | + | + | + |
 | -vx lùi | - | - | - | - |
-| +vy trái | - | + | - | + |
-| -vy phải | + | - | + | - |
+| +vy trái | - | + | + | - |
+| -vy phải | + | - | - | + |
 | +wz CCW | - | - | + | + |
 | -wz CW | + | + | - | - |
 

@@ -51,10 +51,10 @@ constexpr int32_t mecanumM2(int32_t vx, int32_t vy, int32_t wz) {
   return vx + vy - wz;
 }
 constexpr int32_t mecanumM3(int32_t vx, int32_t vy, int32_t wz) {
-  return vx - vy + wz;
+  return vx + vy + wz;
 }
 constexpr int32_t mecanumM4(int32_t vx, int32_t vy, int32_t wz) {
-  return vx + vy + wz;
+  return vx - vy + wz;
 }
 
 static_assert(
@@ -64,8 +64,13 @@ static_assert(
 
 static_assert(
     mecanumM1(0, 1, 0) == -1 && mecanumM2(0, 1, 0) == 1 &&
-    mecanumM3(0, 1, 0) == -1 && mecanumM4(0, 1, 0) == 1,
-    "Mecanum +vy left-strafe basis must remain -+-+");
+    mecanumM3(0, 1, 0) == 1 && mecanumM4(0, 1, 0) == -1,
+    "Mecanum +vy left-strafe basis must remain -++-");
+
+static_assert(
+    mecanumM1(0, -1, 0) == 1 && mecanumM2(0, -1, 0) == -1 &&
+    mecanumM3(0, -1, 0) == -1 && mecanumM4(0, -1, 0) == 1,
+    "Mecanum -vy right-strafe basis must remain +--+");
 
 static_assert(
     mecanumM1(0, 0, 1) == -1 && mecanumM2(0, 0, 1) == -1 &&
@@ -74,8 +79,13 @@ static_assert(
 
 static_assert(
     mecanumM1(1, -1, 0) == 2 && mecanumM2(1, -1, 0) == 0 &&
-    mecanumM3(1, -1, 0) == 2 && mecanumM4(1, -1, 0) == 0,
-    "Mecanum forward-right diagonal must remain +0+0");
+    mecanumM3(1, -1, 0) == 0 && mecanumM4(1, -1, 0) == 2,
+    "Mecanum forward-right diagonal must remain +00+");
+
+static_assert(
+    mecanumM1(1, 1, 0) == 0 && mecanumM2(1, 1, 0) == 2 &&
+    mecanumM3(1, 1, 0) == 2 && mecanumM4(1, 1, 0) == 0,
+    "Mecanum forward-left diagonal must remain 0++0");
 
 // Động học normalized Omni-X canonical 45 độ.
 constexpr int32_t omniM1(int32_t vx, int32_t vy, int32_t wz) {
@@ -605,8 +615,8 @@ TungLamWheelVelocity TungLamDrive4WD::inverseKinematics(
   return {
       vxMps - vyMps - lever * wzRadps,
       vxMps + vyMps - lever * wzRadps,
-      vxMps - vyMps + lever * wzRadps,
-      vxMps + vyMps + lever * wzRadps
+      vxMps + vyMps + lever * wzRadps,
+      vxMps - vyMps + lever * wzRadps
   };
 }
 
@@ -638,7 +648,7 @@ TungLamBodyVelocity TungLamDrive4WD::forwardKinematics(
       ( wheels.m1Mps + wheels.m2Mps
       + wheels.m3Mps + wheels.m4Mps) * 0.25f,
       (-wheels.m1Mps + wheels.m2Mps
-      - wheels.m3Mps + wheels.m4Mps) * 0.25f,
+      + wheels.m3Mps - wheels.m4Mps) * 0.25f,
       (-wheels.m1Mps - wheels.m2Mps
       + wheels.m3Mps + wheels.m4Mps) / (4.0f * lever)
   };
