@@ -507,37 +507,79 @@ Omni mechanical layouts vary more than Mecanum chassis. Always commission each w
 
 # 🎮 Using a PS2 controller
 
-The drive library intentionally keeps the controller as an independent input layer:
+The drive library keeps the controller as an independent input layer:
 
 ```text
 PS2 controller
       ↓
 TungLam_PS2
       ↓
-filtered joystick / button state
+filtered button / joystick state
       ↓
 application mapping
-      ↓
-vx, vy, wz
       ↓
 TungLam_OmniMecanum_4WD
       ↓
 4 motors
 ```
 
-A complete integration example is available at **`examples/PS2RobotControl`** and is validated against `TungLam_PS2 v0.4.0`.
+## PS2 robot-control examples
 
-On Arduino Mega 2560, the default pin groups do not conflict:
+Only **two focused PS2 driving styles** are provided:
+
+### 1. `PS2RobotControl` — recommended
+
+This follows the older RoboBall/V5 control style:
+
+```text
+LEFT stick
+  UP/DOWN    → forward/backward
+  LEFT/RIGHT → strafe left/right
+
+RIGHT stick
+  LEFT/RIGHT → rotate left/right
+                   ↑
+              HIGHER PRIORITY
+```
+
+If the left stick is held UP and the right stick is pushed RIGHT, rotation overrides translation. When the right stick returns to center, forward motion resumes because the left stick is still held UP.
+
+The new example expresses this priority explicitly with `return` instead of relying on right-stick `if` statements appearing later in the source.
+
+### 2. `PS2RobotVectorMix` — advanced
+
+Use this when both sticks should affect the chassis simultaneously:
+
+```text
+LEFT stick  → vx / vy
+RIGHT stick → wz
+      ↓
+robot.drive(vx, vy, wz)
+```
+
+Holding LEFT UP while pushing RIGHT RIGHT makes the robot translate forward while rotating right.
+
+## Mega 2560 wiring
 
 | Block | Pins |
 |---|---|
 | PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, e.g. D53 CS |
-| Motor PWM | D5, D6, D7, D8 |
+| M1 front-left | PWM D5 |
+| M2 rear-left | PWM D6 |
+| M3 rear-right | PWM D7 |
+| M4 front-right | PWM D8 |
 | Motor DIR | D30..D37 |
 
-The example maps the left stick to translation, the right stick to rotation, L1/R1 to speed modes, START to drive enable, and immediately calls `robot.stop()` if PS2 connectivity is lost. Optional `ps2.debug(Serial)` output is event-driven rather than continuously streamed.
+The PS2 and motor pin groups do not conflict.
 
-These mappings belong only to the example. The motor core remains reusable with Bluetooth, ESP-NOW, RC, ROS2, vision, autonomous navigation, or any other input source.
+Both examples:
+
+- immediately call `robot.stop()` on PS2 link loss;
+- use no `delay()`;
+- use the default 50 Hz PS2 polling;
+- support optional event-driven `ps2.debug(Serial)`;
+- keep application button/stick mapping outside the library core.
+
 
 ---
 

@@ -7,6 +7,28 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.10.4] - 2026-10-02
+
+### PS2 driving examples
+- Reworked `PS2RobotControl` into the recommended RoboBall/V5-style control flow.
+- Left stick controls forward/backward/strafe.
+- Right-stick LEFT/RIGHT has explicit higher priority and overrides left-stick translation.
+- Releasing the right stick returns control to the still-held left-stick command.
+- Added `PS2RobotVectorMix` as a separate advanced example for simultaneous translation + rotation through `drive(vx, vy, wz)`.
+- Kept PS2 application mapping outside both library cores.
+- Updated Vietnamese/English documentation to explain the two control styles and the correct V5 physical wheel layout:
+  - M1 front-left
+  - M2 rear-left
+  - M3 rear-right
+  - M4 front-right
+
+### Reference to historical projects
+- The priority example mirrors the behavior found in earlier RoboBall projects where right-stick rotation commands were evaluated after left-stick translation commands.
+- The new implementation makes that arbitration explicit instead of depending on statement order.
+
+### Compatibility
+- No motor core, Mecanum/Omni kinematics, V5 API, timer, braking, or PS2 protocol behavior changed.
+
 ## [0.10.3] - 2026-10-02
 
 ### Fixed

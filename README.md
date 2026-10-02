@@ -655,45 +655,79 @@ vẫn được giữ để project cũ không phải viết lại.
 
 # 🎮 Tích hợp tay cầm PS2
 
-Thư viện đế **không phụ thuộc cứng** vào tay cầm. PS2 vẫn là một input layer độc lập:
+Thư viện đế **không phụ thuộc cứng** vào tay cầm. `TungLam_PS2` chỉ là input layer:
 
 ```text
 PS2 controller
       ↓
 TungLam_PS2
       ↓
-joystick / button state đã lọc
+button / joystick state đã lọc
       ↓
 application mapping
-      ↓
-vx, vy, wz
       ↓
 TungLam_OmniMecanum_4WD
       ↓
 4 motor
 ```
 
-Ví dụ đầy đủ nằm tại **`examples/PS2RobotControl`** và dùng `TungLam_PS2 v0.4.0`.
+## Ví dụ điều khiển xe bằng PS2
 
-Trên Arduino Mega 2560, hai thư viện không xung đột chân mặc định:
+Repo chỉ giữ **2 kiểu điều khiển PS2 rõ ràng**:
+
+### 1. `PS2RobotControl` — khuyến nghị
+
+Đây là kiểu bám sát các project RoboBall/V5 cũ:
+
+```text
+LEFT joystick
+  UP/DOWN    → tiến/lùi
+  LEFT/RIGHT → ngang trái/phải
+
+RIGHT joystick
+  LEFT/RIGHT → xoay trái/phải
+                 ↑
+            ƯU TIÊN CAO HƠN
+```
+
+Nếu đang giữ joystick trái **UP** để tiến rồi gạt joystick phải **RIGHT**, robot chuyển sang xoay phải. Khi thả joystick phải về tâm, robot quay lại tiến vì joystick trái vẫn đang giữ UP.
+
+Code mới biểu diễn priority bằng `return`, thay vì phụ thuộc việc các `if` của joystick phải được đặt sau joystick trái như code cũ.
+
+### 2. `PS2RobotVectorMix` — nâng cao
+
+Dùng khi muốn hai joystick tác động đồng thời:
+
+```text
+LEFT joystick  → vx / vy
+RIGHT joystick → wz
+       ↓
+robot.drive(vx, vy, wz)
+```
+
+Ví dụ giữ LEFT UP và gạt RIGHT RIGHT thì robot **vừa tiến vừa quay phải**.
+
+## Đấu dây Mega 2560
 
 | Khối | Chân |
 |---|---|
 | PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, ví dụ D53 CS |
-| Motor PWM | D5, D6, D7, D8 |
+| M1 trước-trái | PWM D5 |
+| M2 sau-trái | PWM D6 |
+| M3 sau-phải | PWM D7 |
+| M4 trước-phải | PWM D8 |
 | Motor DIR | D30..D37 |
 
-Mapping trong example:
+Hai nhóm chân PS2 và motor không xung đột.
 
-- joystick trái → tiến/lùi/ngang;
-- joystick phải trái/phải → quay;
-- giữ L1 → slow;
-- giữ R1 → fast;
-- nhấn START → bật/tắt quyền điều khiển;
+Cả hai example đều:
+
 - mất PS2 → `robot.stop()` ngay;
-- debug tùy chọn bằng `ps2.debug(Serial)`, không spam khi state đứng yên.
+- không dùng `delay()`;
+- poll PS2 mặc định 50 Hz;
+- debug tùy chọn bằng `ps2.debug(Serial)`, không spam khi state đứng yên;
+- chỉ minh họa mapping ứng dụng, không gắn cứng chức năng vào core library.
 
-Mapping trên **chỉ thuộc example**. Core motor vẫn dùng được với Bluetooth, ESP-NOW, RC, ROS2, tự hành, camera/vision hoặc bất kỳ nguồn lệnh nào khác.
 
 ---
 
@@ -708,7 +742,8 @@ Mapping trên **chỉ thuộc example**. Core motor vẫn dùng được với B
 | **PerWheelControl** | Điều khiển trực tiếp từng bánh |
 | **MetricKinematics** | Khai báo motor/chassis, m/s, rad/s, IK/FK |
 | **StudentQuickStart** | Ví dụ khuyến nghị: Smart Safety + driveVelocity() tối giản |
-| **PS2RobotControl** | Điều khiển đế bằng TungLam_PS2: joystick trái/phải, speed button, fail-safe |
+| **PS2RobotControl** | PS2 khuyến nghị: joystick phải override joystick trái, bám phong cách RoboBall/V5 |
+| **PS2RobotVectorMix** | PS2 nâng cao: vừa tịnh tiến vừa quay bằng vx/vy/wz |
 | **ActiveBrake** | ABS |
 | **ActiveBrakeNonBlocking** | ABS không block chương trình |
 | **LegacyV5DropIn** | Giữ nguyên code V5 |
