@@ -7,6 +7,24 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.11.2] - 2026-10-06
+
+### PS2 + IMU control policy refinement
+- Reworked `PS2IMUHeadless` so heading hold and headless translation are independent features.
+- Translation heading hold now covers forward, reverse, strafe and diagonal motion.
+- On translation start, the heading target is captured from the previous 100 Hz control sample, before the first non-zero translation command is applied.
+- Manual right-stick yaw disables heading PID completely; releasing manual yaw captures the current heading as the new target.
+- Added START toggle for stationary heading hold without disabling automatic translation heading hold.
+- Added R1 toggle for body-centric/headless operation; enabling Headless captures current yaw as field zero.
+- SELECT re-zeros the field frame only while Headless is enabled.
+- Field-to-body translation remains active during manual yaw, so the field-frame movement direction is preserved while the chassis rotates.
+- Expanded debug telemetry with motion state, headless state, idle-hold state, field zero, manual yaw and active PID gains.
+
+### Compatibility
+- No motor HAL, timer, braking, Mecanum/Omni equation or public Drive API changed.
+- Existing `PS2RobotControl`, V5 compatibility and non-IMU examples are unchanged.
+- New behavior is isolated to the `PS2IMUHeadless` application template and documentation.
+
 ## [0.11.1] - 2026-10-06
 
 ### PS2 + IMU field-centric integration

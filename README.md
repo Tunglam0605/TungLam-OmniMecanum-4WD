@@ -700,39 +700,82 @@ Các ví dụ PS2/vector-mix cũ vẫn được lưu trong `extras/reference-exa
 
 ### PS2 + IMU + Fuzzy PID: `PS2IMUHeadless`
 
-Đây là template nâng cao để ghép **bốn thư viện độc lập** thành một đế Mecanum field-centric/không đầu:
+Đây là template nâng cao ghép **bốn thư viện độc lập** và tách rõ hai chức năng khác nhau: **giữ hướng (heading hold)** và **xe không đầu (headless/field-centric)**.
 
 ```text
-TungLam_PS2
-    │
-    ├── joystick trái ──> vx_field, vy_field
-    │
-    └── joystick phải ──> manual wz
-                            │
-TungLam_HWT901B ──> yaw + gyro Z
-          │                 │
-          ├──> Field -> Body transform
-          │                 │
-          └──> TungLam_FuzzyPID ──> heading correction wz
-                            │
-                            ▼
-               TungLam_OmniMecanum_4WD
-                            │
-                            ▼
-                  driveVelocity(vx,vy,wz)
+                         PS2
+                          │
+             ┌────────────┼────────────┐
+             │            │            │
+         Joy trái     Joy phải X       R1
+             │            │            │
+       Translation     Manual wz   Headless toggle
+             │            │
+             ▼            │
+        R1 OFF/ON         │
+         │      │         │
+         │      └─ Field -> Body <── HWT901B yaw
+         │                │
+         └──────┬─────────┘
+                ▼
+           vx_body/vy_body
+                │
+                ├──────── Manual wz có ưu tiên tuyệt đối
+                │
+                └──────── Fuzzy PID giữ yaw khi không manual wz
+                              ▲
+                       IMU yaw + gyro Z
+                              │
+                              ▼
+                 driveVelocity(vx,vy,wz)
 ```
 
-Hành vi điều khiển:
+### Quy tắc giữ hướng
 
-- joystick trái luôn ra lệnh theo **hệ sân**, không phụ thuộc đầu robot;
-- có thể vừa tiến/ngang/chéo vừa quay mà vector dịch chuyển ngoài sân vẫn giữ hướng;
-- joystick phải đang lệch tâm → người lái điều khiển yaw trực tiếp;
-- vừa thả joystick phải → controller chốt heading mới và tự giữ hướng;
-- nút **SELECT** lấy lại mốc `field zero` tại tư thế hiện tại;
-- mất PS2 hoặc dữ liệu angle/gyro IMU quá cũ → `robot.stop()` fail-safe;
-- heading loop chạy 100 Hz, PS2 poll 50 Hz.
+- **Tiến/lùi/ngang/chéo đều tự động giữ yaw** khi joystick phải không ra lệnh quay.
+- Khi phát hiện từ đứng yên sang có tịnh tiến, heading target được lấy từ **yaw của chu kỳ control trước đó**. Vòng control chạy 100 Hz nên đây chính là góc khoảng 10 ms trước khi command tịnh tiến đầu tiên được gửi xuống motor.
+- Khi joystick phải X có lệnh `wz`, PID yaw **tắt hoàn toàn**; người lái có toàn quyền quay robot.
+- Khi nhả joystick phải, controller lấy **yaw tại đúng thời điểm nhả** làm heading target mới. Nếu xe vẫn đang chạy, PID giữ ngay góc mới đó.
+- **START** toggle giữ hướng khi đứng yên:
+  - START OFF: xe đứng yên không khóa yaw.
+  - START ON: xe đứng yên vẫn dùng Fuzzy PID giữ yaw.
+  - START không làm mất heading hold tự động khi xe đang tịnh tiến.
+- Manual `wz` luôn ưu tiên hơn cả translation hold và idle hold.
 
-Template cố ý để transform + heading control ở **application layer**. PS2 chỉ đọc lệnh, IMU chỉ đo trạng thái, FuzzyPID chỉ tính control output và Drive chỉ nhận `vx/vy/wz`.
+### Quy tắc xe không đầu / Headless
+
+- **R1** toggle Headless:
+  - R1 OFF: joystick trái là **body-centric** — hướng joystick bám theo đầu/thân robot.
+  - R1 ON: joystick trái là **field-centric** — hướng joystick bám theo sân.
+- Khi chuyển R1 từ OFF → ON, yaw hiện tại được lấy làm **0° của hệ sân**.
+- **SELECT** khi Headless đang ON sẽ lấy lại field-zero tại tư thế hiện tại.
+- Headless **không phải** heading PID. Nó chỉ dùng yaw IMU để đổi vector vận tốc từ hệ sân về hệ thân.
+- Vì phép Field → Body được tính lại ở mỗi chu kỳ 100 Hz, xe có thể **vừa dịch chuyển vừa quay bằng joystick phải mà hướng dịch chuyển ngoài sân vẫn không đổi**.
+
+Ví dụ: giữ joystick trái hướng “tiến theo sân” trong khi quay thân robot:
+
+```text
+yaw thân     command trong hệ thân         hướng ngoài sân
+  0°         vx > 0,  vy ≈ 0              ↑
+ 45°         vx > 0,  vy < 0              ↑
+ 90°         vx ≈ 0,  vy < 0              ↑
+180°         vx < 0,  vy ≈ 0              ↑
+```
+
+### Nút điều khiển
+
+| Điều khiển | Chức năng |
+|---|---|
+| Joy trái Y | tiến/lùi |
+| Joy trái X | ngang trái/phải |
+| Joy phải X | quay CW/CCW; đang có lệnh quay thì PID yaw OFF |
+| **R1** | toggle Body-centric ↔ Headless |
+| **START** | toggle giữ yaw khi xe đứng yên |
+| **SELECT** | re-zero hệ sân khi Headless đang ON |
+
+Mất PS2 hoặc angle/gyro IMU quá cũ sẽ gọi `robot.stop()`, reset controller và khi kết nối lại sẽ lấy reference mới để tránh robot bất ngờ quay về target cũ.
+
+Template cố ý giữ toàn bộ policy này ở **application layer**. PS2 chỉ đọc input, HWT901B chỉ cung cấp state, FuzzyPID chỉ tính yaw correction và Drive chỉ nhận `vx/vy/wz`.
 
 ## Đấu dây Mega 2560
 
@@ -768,7 +811,7 @@ Menu Arduino IDE chỉ giữ **5 template có mục đích rõ ràng**:
 | **FirstMotorTest** | Commissioning: xác nhận M1..M4 và chiều quay trước khi đặt robot xuống sàn |
 | **RobotTemplate** | Template tổng quát: copy project rồi điền `readInputs()`, `motionAllowed()`, `handleMechanisms()` |
 | **PS2RobotControl** | Template khuyến nghị cho robot PS2/RoboBall; drive logic đã xong, chỉ điền các hàm cơ cấu |
-| **PS2IMUHeadless** | Mecanum không đầu/field-centric: PS2 + HWT901B + Fuzzy PID, vừa dịch chuyển vừa quay và giữ hướng |
+| **PS2IMUHeadless** | PS2 + HWT901B + Fuzzy PID: giữ yaw khi tịnh tiến, START khóa yaw khi đứng yên, R1 toggle headless và vẫn giữ hướng dịch chuyển khi vừa đi vừa quay |
 | **VelocityControlTemplate** | Template cho ROS2/Serial/PC/auto mode; chỉ cần hiện thực `readVelocityCommand()` |
 
 Triết lý mới:

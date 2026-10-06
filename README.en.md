@@ -550,27 +550,62 @@ Older PS2/vector-mix demos remain under `extras/reference-examples/` for referen
 
 ### PS2 + IMU + Fuzzy PID: `PS2IMUHeadless`
 
-This advanced template composes four independent libraries into a field-centric Mecanum application:
+This advanced template composes four independent libraries while keeping **heading hold** and **headless/field-centric translation** as separate features.
 
 ```text
-TungLam_PS2
-    │
-    ├── left stick  ──> vx_field, vy_field
-    └── right stick ──> manual wz
-
-TungLam_HWT901B ──> yaw + gyro Z
-          │
-          ├──> Field -> Body transform
-          └──> TungLam_FuzzyPID ──> heading correction wz
-                            │
-                            ▼
-               TungLam_OmniMecanum_4WD
-                            │
-                            ▼
+                         PS2
+                          |
+             +------------+------------+
+             |            |            |
+         Left stick   Right stick X    R1
+             |            |            |
+       Translation     Manual wz   Headless toggle
+             |            |
+             v            |
+        R1 OFF/ON         |
+         |      |         |
+         |      +-- Field -> Body <--- HWT901B yaw
+         |                |
+         +-------+--------+
+                 v
+            vx_body/vy_body
+                 |
+                 +-------- Manual wz has absolute yaw priority
+                 |
+                 +-------- Fuzzy PID holds yaw without manual wz
+                               ^
+                        IMU yaw + gyro Z
+                               |
+                               v
                   driveVelocity(vx,vy,wz)
 ```
 
-The left stick commands translation in the field frame. The right stick manually rotates the chassis; when released, the current heading becomes the new hold target. SELECT re-zeros the field frame. Loss of PS2 or fresh IMU angle/gyro data triggers a fail-safe stop.
+Heading behavior:
+
+- Forward, reverse, strafe and diagonal translation all automatically hold yaw while there is no manual yaw command.
+- On the stopped → translating edge, the target is captured from the **previous 100 Hz control-cycle yaw**, before the first translation command reaches the motors.
+- Right-stick X disables yaw PID completely and gives manual `wz` full priority.
+- Releasing right-stick X captures the current yaw as the new target; if translation continues, heading hold resumes immediately.
+- **START** toggles heading hold while stationary. It does not disable automatic heading hold during translation.
+
+Headless behavior:
+
+- **R1** toggles body-centric ↔ field-centric translation.
+- Enabling R1 captures the current yaw as field 0°.
+- **SELECT** re-zeros the field frame while Headless is enabled.
+- Headless is a coordinate transform, not a yaw PID. The Field → Body transform is recomputed every 10 ms from current IMU yaw.
+- Therefore manual rotation can remain active while the commanded translation direction stays fixed in the field frame.
+
+| Control | Function |
+|---|---|
+| Left stick Y | forward/reverse |
+| Left stick X | left/right strafe |
+| Right stick X | manual CW/CCW yaw; yaw PID disabled while active |
+| **R1** | toggle body-centric ↔ headless |
+| **START** | toggle stationary heading hold |
+| **SELECT** | re-zero field frame while Headless is ON |
+
+Loss of PS2 or fresh IMU angle/gyro data triggers a fail-safe stop and controller reset.
 
 ## Mega 2560 wiring
 
@@ -824,7 +859,7 @@ The Arduino IDE menu intentionally exposes only **five project-oriented template
 | **FirstMotorTest** | Commission M1..M4 placement and polarity before floor testing |
 | **RobotTemplate** | General skeleton; fill `readInputs()`, `motionAllowed()`, and `handleMechanisms()` |
 | **PS2RobotControl** | Recommended PS2/RoboBall template; drive logic is ready, fill mechanism hooks |
-| **PS2IMUHeadless** | Field-centric Mecanum: PS2 + HWT901B + Fuzzy PID with simultaneous translation, rotation, and heading hold |
+| **PS2IMUHeadless** | PS2 + HWT901B + Fuzzy PID: translation heading hold, START idle yaw lock, R1 headless toggle, and field-stable translation during manual rotation |
 | **VelocityControlTemplate** | ROS2/Serial/PC/autonomous template; implement `readVelocityCommand()` |
 
 The new rule is simple:

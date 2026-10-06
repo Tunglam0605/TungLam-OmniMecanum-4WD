@@ -1,48 +1,78 @@
 /**
  * @file PS2IMUHeadless.ino
- * @brief Đế Mecanum không đầu: PS2 + HWT901B + Fuzzy PID + TungLam Drive.
+ * @brief Điều khiển đế Mecanum bằng PS2 + HWT901B + Fuzzy PID.
  *
  * MỤC TIÊU
  * ---------------------------------------------------------------------------
- * - Joystick trái ra lệnh tịnh tiến theo HỆ SÂN (field frame), không phụ thuộc
- *   đầu robot đang quay về hướng nào.
- * - Joystick phải X quay robot thủ công.
- * - Khi thả joystick phải, robot tự khóa heading hiện tại bằng PID/Fuzzy PID.
- * - Có thể vừa tịnh tiến vừa quay; vector tịnh tiến ngoài sân vẫn giữ hướng.
- * - Mất PS2 hoặc mất dữ liệu IMU mới -> dừng robot fail-safe.
+ * Ví dụ này tách rõ hai chức năng độc lập:
+ *
+ * 1) GIỮ HƯỚNG (Heading Hold)
+ *    - Khi xe bắt đầu có lệnh tịnh tiến và không có lệnh quay tay, controller
+ *      chốt góc yaw của CHU KỲ CONTROL TRƯỚC ĐÓ rồi giữ góc này.
+ *    - Tiến, lùi, ngang và chéo đều được giữ heading.
+ *    - Khi người lái điều khiển joystick phải X để quay, PID yaw tắt hoàn toàn.
+ *    - Khi nhả joystick quay, yaw hiện tại trở thành heading target mới.
+ *    - Nút START bật/tắt việc tiếp tục giữ heading khi xe đang đứng yên.
+ *
+ * 2) XE KHÔNG ĐẦU / HEADLESS / FIELD-CENTRIC
+ *    - Nút R1 bật/tắt chế độ.
+ *    - Khi OFF: joystick trái điều khiển theo thân robot (body-centric).
+ *    - Khi ON: hướng robot tại thời điểm bật R1 được lấy làm hướng 0 độ của sân.
+ *      Từ đó joystick trái điều khiển theo hệ sân, không phụ thuộc đầu xe.
+ *    - Dù vừa tịnh tiến vừa quay bằng wz, vector dịch chuyển ngoài sân vẫn giữ
+ *      đúng hướng người lái đang chỉ trên joystick.
+ *    - SELECT lấy lại mốc 0 độ của sân khi Headless đang bật.
+ *
+ * THỨ TỰ ƯU TIÊN
+ * ---------------------------------------------------------------------------
+ * 1. Safety: mất PS2 hoặc mất dữ liệu IMU mới -> dừng robot.
+ * 2. Manual yaw: joystick phải X có quyền điều khiển wz tuyệt đối.
+ * 3. Translation heading hold: đang tịnh tiến, không manual yaw -> PID giữ yaw.
+ * 4. Idle heading hold: đứng yên và START bật -> PID giữ yaw.
+ * 5. Idle free: đứng yên và START tắt -> không PID.
  *
  * KIẾN TRÚC
  * ---------------------------------------------------------------------------
- * PS2 joystick trái -> vx_field, vy_field
- *                                |
- * IMU yaw -----------------------+--> Field -> Body transform
- *                                |             |
- * PS2 joystick phải -> yaw cmd   |             +--> vx_body, vy_body
- *              |                 |
- *              +-- manual turn --+
- *              |
- *              +-- thả cần -> Heading PID/Fuzzy PID -> wz
- *
- * vx_body + vy_body + wz
- *          |
- *          v
- * robot.driveVelocity()
+ *                           PS2
+ *                            |
+ *              +-------------+-------------+
+ *              |             |             |
+ *          Joy trái      Joy phải X       R1
+ *              |             |             |
+ *        Translation      Manual wz    Headless toggle
+ *              |             |
+ *              v             |
+ *         Headless ?         |
+ *          /      \          |
+ *       OFF        ON         |
+ *       |           |         |
+ *  body vx/vy   Field -> Body <----- IMU yaw
+ *       |           |         |
+ *       +-----+-----+         |
+ *             |               |
+ *             v               v
+ *          vx_body         yaw policy
+ *          vy_body      manual / PID hold
+ *             |               |
+ *             +-------+-------+
+ *                     |
+ *                     v
+ *             robot.driveVelocity()
  *
  * GIẢ ĐỊNH PHẦN CỨNG
  * ---------------------------------------------------------------------------
  * - Arduino Mega 2560.
  * - PS2 dùng hardware SPI mặc định: D50/D51/D52 và CS D53.
  * - HWT901B nối Serial1: TX IMU -> RX1 D19, RX IMU -> TX1 D18.
- * - HWT901B đã được cấu hình sẵn 115200 baud, có ANGLE + GYRO và nên chạy 100 Hz.
- * - Trục Z/yaw của IMU cùng chiều dương CCW với +wz của robot.
+ * - HWT901B đã cấu hình 115200 baud, có ANGLE + GYRO, nên chạy 100 Hz.
+ * - +yaw / +gyro Z của IMU cùng chiều +wz robot (CCW).
  *   Nếu ngược chiều, đổi IMU_YAW_SIGN từ +1 thành -1.
- * - Thông số motor/chassis bên dưới chỉ là baseline; phải thay theo robot thật.
  *
- * LƯU Ý ĐIỀU KHIỂN
+ * LƯU Ý
  * ---------------------------------------------------------------------------
- * Drive hiện là feed-forward vòng hở ở từng bánh nếu chưa có encoder.
- * Heading PID sửa sai yaw của toàn thân nhưng không biến 4 bánh thành velocity
- * closed-loop. Muốn bám vx/vy chính xác hơn cần encoder PID từng bánh ở tầng dưới.
+ * Drive hiện vẫn là feed-forward vòng hở ở từng bánh nếu chưa có encoder.
+ * IMU giúp giữ yaw và thực hiện field-centric, nhưng không đo được trượt ngang.
+ * Muốn bám vx/vy chính xác khi tải thay đổi cần PID tốc độ từng bánh bằng encoder.
  */
 
 #include <math.h>
@@ -59,36 +89,39 @@
 constexpr uint8_t PS2_CS_PIN = 53;
 constexpr uint32_t IMU_BAUD = 115200UL;
 
-// Vòng heading/control 100 Hz. PS2 vẫn tự poll 50 Hz và giữ state mới nhất.
+// Vòng điều khiển 100 Hz. PS2 tự poll 50 Hz và giữ state mới nhất.
 constexpr uint32_t CONTROL_PERIOD_US = 10000UL;
 
-// Dữ liệu angle/gyro cũ hơn ngưỡng này bị coi là không an toàn để headless.
+// Angle/gyro cũ hơn ngưỡng này bị coi là stale.
 constexpr uint32_t IMU_DATA_TIMEOUT_MS = 120UL;
 
-// Tốc độ lệnh tối đa từ tay cầm.
+// Tốc độ lệnh tối đa.
 constexpr float MAX_LINEAR_MPS = 0.55f;
 constexpr float MAX_MANUAL_YAW_RADPS = 2.0f;
 
-// Deadzone sau khi PS2 library đã lọc/trừ tâm.
+// Deadzone joystick sau tầng lọc của thư viện PS2.
 constexpr float TRANSLATION_DEADZONE = 0.12f;
 constexpr float TURN_DEADZONE = 0.15f;
 
-// Đặt -1.0f nếu yaw/gyro Z của IMU tăng theo chiều CW so với quy ước robot.
+// Ngưỡng logic sau deadzone để xác định có command hay không.
+constexpr float COMMAND_EPSILON = 1.0e-5f;
+
+// Đổi thành -1.0f nếu chiều yaw thực tế của IMU ngược quy ước +wz của robot.
 constexpr float IMU_YAW_SIGN = 1.0f;
 
-// Bật 1 khi tune; production nên để 0 để không làm Serial ảnh hưởng timing.
+// Bật 1 khi tune. Production nên để 0 để giảm tải Serial.
 #define HEADLESS_DEBUG 0
 
-// Baseline mẫu cho motor 12 V, 300 rpm, bánh R=50 mm.
-// Hãy đo và sửa đúng với robot thật trước khi chạy tốc độ cao.
+// Baseline mẫu: motor 12 V, 300 rpm, bánh R=50 mm.
+// Cần đo và sửa theo đúng robot thật trước khi chạy tốc độ cao.
 const TungLamDriveConfig DRIVE_MODEL(
     12.0f,   // điện áp danh định motor [V]
-    300.0f,  // RPM đầu ra hộp số tại điện áp danh định
+    300.0f,  // RPM đầu ra hộp số
     12.0f,   // điện áp nguồn driver [V]
     0.050f,  // bán kính bánh [m]
     0.320f,  // wheelbase [m]
     0.280f,  // track width [m]
-    0.85f    // hiệu chỉnh vòng hở
+    0.85f    // hệ số hiệu chỉnh feed-forward
 );
 
 // ============================================================================
@@ -100,19 +133,52 @@ TungLamDrive4WD robot;
 HWT901B imu;
 TungLamFuzzyPID headingController;
 
-// Mốc hệ sân: yaw robot tại thời điểm lấy "đầu sân".
+// ============================================================================
+// TRẠNG THÁI ĐIỀU KHIỂN
+// ============================================================================
+
+// R1 điều khiển flag này.
+// false: joystick trái theo thân robot.
+// true : joystick trái theo hệ sân.
+bool headlessEnabled = false;
+
+// START chỉ điều khiển việc giữ yaw khi xe đang đứng yên.
+// Khi đang tịnh tiến, heading hold vẫn tự động hoạt động bất kể flag này.
+bool idleHeadingHoldEnabled = false;
+
+// Mốc 0 độ của hệ sân.
+// Khi bật Headless bằng R1, yaw hiện tại được lấy làm field zero.
 float fieldZeroYawDeg = 0.0f;
 
-// Heading mà robot phải giữ khi joystick phải đang ở Center.
+// Góc mà PID phải giữ khi heading hold hoạt động.
 float headingTargetYawDeg = 0.0f;
 
+// Yaw của CHU KỲ CONTROL TRƯỚC.
+// Dùng để chốt heading trước khi motor bắt đầu nhận lệnh tịnh tiến một nhịp.
+float previousControlYawDeg = 0.0f;
+
+// Trạng thái command của chu kỳ trước để phát hiện cạnh chuyển trạng thái.
+bool previousTranslationActive = false;
+bool previousRotationActive = false;
+
 bool referenceReady = false;
-bool manualTurning = false;
 uint32_t lastControlUs = 0;
 
+enum class MotionState : uint8_t {
+  Idle,
+  TranslationHold,
+  ManualRotation,
+  TranslationWithManualRotation
+};
+
+// Command joystick trái sau deadzone.
+// xMps/yMps là vector logic người lái muốn.
+// Khi Headless OFF: vector này được hiểu trực tiếp theo body.
+// Khi Headless ON : vector này được hiểu theo field.
 struct TranslationCommand {
-  float vxFieldMps;
-  float vyFieldMps;
+  float xMps;
+  float yMps;
+  float normalizedMagnitude;
 };
 
 struct BodyTranslation {
@@ -131,24 +197,37 @@ void setupHeadingController();
 
 bool readFreshImu(TungLamHWT901BData& data);
 void initializeReference(const TungLamHWT901BData& data);
-void handleReferenceButton(const TungLamHWT901BData& data);
+void handleModeButtons(const TungLamHWT901BData& data);
 void runControl(const TungLamHWT901BData& data, float dtSeconds);
 void safeStop();
 
 TranslationCommand readTranslationCommand();
+BodyTranslation resolveBodyTranslation(const TranslationCommand& command,
+                                       float currentYawDeg);
 BodyTranslation fieldToBody(const TranslationCommand& field,
                             float currentYawDeg);
 float readManualYawCommand();
+
+MotionState determineMotionState(bool translationActive,
+                                 bool rotationActive);
+
+float computeHeadingCorrection(float currentYawDeg,
+                               float gyroZDps,
+                               float dtSeconds);
+
 float axisWithDeadzone(int16_t axis, float deadzone);
 float clampf(float value, float minimum, float maximum);
 float signedYawDeg(float imuYawDeg);
 float signedGyroZDps(float imuGyroZDps);
 
 #if HEADLESS_DEBUG
+const char* motionStateName(MotionState state);
 void debugTelemetry(const TungLamHWT901BData& data,
-                    const TranslationCommand& field,
+                    MotionState state,
+                    const TranslationCommand& command,
                     const BodyTranslation& body,
-                    float wzRadps);
+                    float manualWzRadps,
+                    float finalWzRadps);
 #endif
 
 // ============================================================================
@@ -169,15 +248,14 @@ void setup() {
 }
 
 void loop() {
-  // Ba update này đều phải được gọi liên tục, không dùng delay().
+  // Các update đều non-blocking. Không dùng delay().
   ps2.update();
   imu.update();
   robot.update();
 
   TungLamHWT901BData imuData;
 
-  // Headless phụ thuộc cả controller và heading sensor.
-  // Không có một trong hai nguồn -> dừng thay vì giữ lệnh cũ.
+  // Cả tay cầm và IMU đều là nguồn bắt buộc của template này.
   if (!ps2.connected() || !readFreshImu(imuData)) {
     safeStop();
     return;
@@ -188,7 +266,8 @@ void loop() {
     return;
   }
 
-  handleReferenceButton(imuData);
+  // Xử lý event nút trước gate 100 Hz để không bỏ lỡ cạnh pressed của PS2.
+  handleModeButtons(imuData);
 
   const uint32_t nowUs = micros();
   const uint32_t elapsedUs = nowUs - lastControlUs;
@@ -200,12 +279,16 @@ void loop() {
   float dtSeconds = elapsedUs * 1.0e-6f;
   lastControlUs = nowUs;
 
-  // Nếu loop từng bị treo/chậm quá lâu, không cho PID dùng một dt bất thường.
-  // Đồng bộ lại target tại heading hiện tại rồi bắt đầu vòng điều khiển mới.
+  const float currentYawDeg = signedYawDeg(imuData.yaw_deg);
+
+  // Nếu scheduler từng trễ >50 ms, không cho PID tích phân/đạo hàm với dt bất thường.
+  // Reset lịch sử state để vòng sau coi đây là một khởi đầu sạch.
   if (dtSeconds > 0.050f) {
-    headingTargetYawDeg = signedYawDeg(imuData.yaw_deg);
+    headingTargetYawDeg = currentYawDeg;
+    previousControlYawDeg = currentYawDeg;
+    previousTranslationActive = false;
+    previousRotationActive = false;
     headingController.reset();
-    manualTurning = false;
     dtSeconds = CONTROL_PERIOD_US * 1.0e-6f;
   }
 
@@ -221,11 +304,11 @@ void setupDrive() {
   robot.setChassis(TungLamChassis::MecanumX);
   robot.setDriveConfig(DRIVE_MODEL);
 
-  // Watchdog 250 ms + ramp vận tốc giúp tránh bước lệnh quá gắt.
+  // Watchdog lệnh + giới hạn gia tốc để giảm bước lệnh quá gắt.
   robot.enableSmartSafety(
-      250,   // timeout lệnh [ms]
-      1.5f,  // gia tốc tịnh tiến tối đa [m/s^2]
-      4.0f   // gia tốc yaw tối đa [rad/s^2]
+      250,   // command timeout [ms]
+      1.5f,  // linear acceleration limit [m/s^2]
+      4.0f   // yaw acceleration limit [rad/s^2]
   );
 }
 
@@ -235,15 +318,14 @@ void setupController() {
 }
 
 void setupImu() {
-  // QUAN TRỌNG:
-  // Ví dụ giả định HWT901B đã được cấu hình 115200 baud trước đó.
-  // Nếu cảm biến vẫn là 9600, hãy dùng example cấu hình của TungLam_HWT901B
-  // để đổi baud/output/rate một lần rồi mới chạy sketch này.
+  // Ví dụ giả định HWT901B đã được cấu hình 115200 baud.
+  // Nếu cảm biến còn 9600 baud, hãy dùng example cấu hình của TungLam_HWT901B
+  // để đổi baud/rate/output một lần trước khi chạy sketch này.
   imu.begin(Serial1, IMU_BAUD);
 }
 
 void setupHeadingController() {
-  // Đơn vị output được tune trực tiếp thành rad/s cho driveVelocity().
+  // PID nền. Output được tune trực tiếp thành rad/s cho driveVelocity().
   headingController.begin(
       0.035f,   // Kp
       0.0015f,  // Ki
@@ -262,22 +344,22 @@ void setupHeadingController() {
       +0.40f
   );
 
-  // Chỉ tích phân gần setpoint để hạn chế windup.
+  // Chỉ cho I-term hoạt động gần target để hạn chế windup.
   headingController.setIntegralZone(12.0f);
 
-  // Tránh robot rung sửa những sai số heading rất nhỏ.
+  // Tránh rung sửa các sai số yaw rất nhỏ.
   headingController.setDeadband(0.4f);
 
-  // 0.25: có lọc D-term nhưng vẫn đủ nhanh cho vòng 100 Hz.
+  // Lọc D-term. D-term sẽ lấy measurement rate trực tiếp từ gyro Z.
   headingController.setDerivativeFilter(0.25f);
 
-  // Fuzzy chỉ schedule gain quanh PID nền, không thay thế PID.
+  // Fuzzy chỉ schedule Kp/Ki/Kd quanh PID nền, không thay thế control law PID.
   headingController.enableFuzzy(
-      45.0f,    // |error| tại biên fuzzy [deg]
-      120.0f,   // |dError/dt| tại biên fuzzy [deg/s]
-      0.015f,   // biên thay đổi Kp
-      0.0010f,  // biên thay đổi Ki
-      0.0030f   // biên thay đổi Kd
+      45.0f,    // biên |error| fuzzy [deg]
+      120.0f,   // biên |dError/dt| fuzzy [deg/s]
+      0.015f,   // biên hiệu chỉnh Kp
+      0.0010f,  // biên hiệu chỉnh Ki
+      0.0030f   // biên hiệu chỉnh Kd
   );
 }
 
@@ -298,6 +380,7 @@ bool readFreshImu(TungLamHWT901BData& data) {
 
   const bool angleFresh =
       (nowMs - data.last_angle_ms) <= IMU_DATA_TIMEOUT_MS;
+
   const bool gyroFresh =
       (nowMs - data.last_gyro_ms) <= IMU_DATA_TIMEOUT_MS;
 
@@ -307,40 +390,83 @@ bool readFreshImu(TungLamHWT901BData& data) {
 void initializeReference(const TungLamHWT901BData& data) {
   const float yawDeg = signedYawDeg(data.yaw_deg);
 
-  // Tư thế robot lúc khởi động/reconnect được coi là +X của hệ sân.
+  // Khởi động/reconnect:
+  // - yaw hiện tại là heading an toàn ban đầu;
+  // - yaw hiện tại cũng là field zero dự phòng.
+  // Headless mặc định vẫn OFF cho tới khi người lái bấm R1.
   fieldZeroYawDeg = yawDeg;
-
-  // Đồng thời giữ đúng heading này khi người lái không ra lệnh quay.
   headingTargetYawDeg = yawDeg;
+  previousControlYawDeg = yawDeg;
+
+  previousTranslationActive = false;
+  previousRotationActive = false;
+
+  headlessEnabled = false;
+  idleHeadingHoldEnabled = false;
 
   headingController.reset();
-  manualTurning = false;
+
   referenceReady = true;
   lastControlUs = micros();
 }
 
-void handleReferenceButton(const TungLamHWT901BData& data) {
-  // SELECT = lấy lại "đầu sân" tại đúng tư thế hiện tại.
-  // Không sửa offset bên trong IMU; field reference thuộc application layer.
-  if (ps2.pressed(PS2Button::Select)) {
-    const float yawDeg = signedYawDeg(data.yaw_deg);
+void handleModeButtons(const TungLamHWT901BData& data) {
+  const float currentYawDeg = signedYawDeg(data.yaw_deg);
 
-    fieldZeroYawDeg = yawDeg;
-    headingTargetYawDeg = yawDeg;
+  // --------------------------------------------------------------------------
+  // R1: TOGGLE HEADLESS
+  // --------------------------------------------------------------------------
+  if (ps2.pressed(PS2Button::R1)) {
+    headlessEnabled = !headlessEnabled;
 
-    headingController.reset();
-    manualTurning = false;
-    lastControlUs = micros();
+    if (headlessEnabled) {
+      // Khi vừa bật, hướng thân hiện tại trở thành 0 độ của sân.
+      // Vì relativeYaw = 0 ngay tại thời điểm bật nên command tịnh tiến không bị
+      // đổi hướng đột ngột chỉ vì chuyển từ body-centric sang field-centric.
+      fieldZeroYawDeg = currentYawDeg;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // START: TOGGLE GIỮ HƯỚNG KHI ĐỨNG YÊN
+  // --------------------------------------------------------------------------
+  if (ps2.pressed(PS2Button::Start)) {
+    idleHeadingHoldEnabled = !idleHeadingHoldEnabled;
+
+    if (idleHeadingHoldEnabled) {
+      // Nếu lần control trước xe đang thực sự idle, khóa đúng yaw hiện tại.
+      // Nếu đang chạy/quay, flag chỉ có tác dụng khi xe trở về idle.
+      if (!previousTranslationActive && !previousRotationActive) {
+        headingTargetYawDeg = currentYawDeg;
+        headingController.reset();
+      }
+    } else {
+      // Tắt idle hold không được làm mất translation hold.
+      // Chỉ reset ngay nếu vòng trước đang đứng yên.
+      if (!previousTranslationActive && !previousRotationActive) {
+        headingController.reset();
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // SELECT: RE-ZERO HỆ SÂN KHI HEADLESS ĐANG BẬT
+  // --------------------------------------------------------------------------
+  if (headlessEnabled && ps2.pressed(PS2Button::Select)) {
+    fieldZeroYawDeg = currentYawDeg;
   }
 }
 
 void safeStop() {
   robot.stop();
 
-  // Khi link trở lại, bắt đầu bằng một reference mới tại tư thế hiện tại.
-  // Cách này tránh robot bất ngờ quay về heading cũ sau sự cố.
+  // Sau khi PS2/IMU trở lại, lấy reference mới tại tư thế hiện tại.
+  // Không quay bất ngờ về target cũ trước khi mất kết nối.
   referenceReady = false;
-  manualTurning = false;
+
+  previousTranslationActive = false;
+  previousRotationActive = false;
+
   headingController.reset();
   lastControlUs = micros();
 }
@@ -353,131 +479,276 @@ void runControl(const TungLamHWT901BData& data, float dtSeconds) {
   const float currentYawDeg = signedYawDeg(data.yaw_deg);
   const float gyroZDps = signedGyroZDps(data.gz_dps);
 
-  // 1) Joystick trái sinh vector tịnh tiến theo HỆ SÂN.
-  const TranslationCommand field = readTranslationCommand();
+  // 1) Đọc vector joystick trái sau radial deadzone.
+  const TranslationCommand translation = readTranslationCommand();
 
-  // 2) Dùng yaw để đổi vector hệ sân -> hệ thân robot.
-  const BodyTranslation body = fieldToBody(field, currentYawDeg);
+  const bool translationActive =
+      translation.normalizedMagnitude > COMMAND_EPSILON;
 
-  // 3) Joystick phải điều khiển yaw thủ công.
+  // 2) R1 quyết định cách diễn giải vector:
+  //    OFF -> body-centric.
+  //    ON  -> field-centric rồi quay về body bằng yaw IMU hiện tại.
+  const BodyTranslation body =
+      resolveBodyTranslation(translation, currentYawDeg);
+
+  // 3) Đọc manual yaw từ joystick phải.
   const float manualWzRadps = readManualYawCommand();
-  const bool turningNow = fabsf(manualWzRadps) > 1.0e-5f;
+  const bool rotationActive =
+      fabsf(manualWzRadps) > COMMAND_EPSILON;
 
-  float wzRadps = 0.0f;
+  const MotionState state =
+      determineMotionState(translationActive, rotationActive);
 
-  if (turningNow) {
-    // Khi người lái chủ động quay, không để PID "đánh nhau" với joystick.
-    if (!manualTurning) {
+  float finalWzRadps = 0.0f;
+
+  // ==========================================================================
+  // ƯU TIÊN 1 SAU SAFETY: MANUAL WZ
+  // ==========================================================================
+  if (state == MotionState::ManualRotation ||
+      state == MotionState::TranslationWithManualRotation) {
+    // Cạnh bắt đầu manual rotation: xóa toàn bộ trạng thái PID cũ để controller
+    // không chống lại người lái bằng I-term/D-history từ heading trước.
+    if (!previousRotationActive) {
       headingController.reset();
     }
 
-    wzRadps = manualWzRadps;
+    // Khi có manual wz, PID yaw OFF hoàn toàn.
+    finalWzRadps = manualWzRadps;
+  }
 
-    // Target bám theo heading hiện tại để khi thả cần, robot khóa ngay hướng mới.
-    headingTargetYawDeg = currentYawDeg;
-  } else {
-    if (manualTurning) {
-      // Chốt chính xác heading tại thời điểm vừa thả joystick phải.
+  // ==========================================================================
+  // KHÔNG CÓ MANUAL WZ: HEADING HOLD TÙY TRẠNG THÁI
+  // ==========================================================================
+  else {
+    // Vừa nhả joystick quay:
+    // góc HIỆN TẠI chính là heading mới mà người lái vừa chọn.
+    if (previousRotationActive) {
       headingTargetYawDeg = currentYawDeg;
       headingController.reset();
     }
 
-    // D-term dùng gyro Z trực tiếp thay vì lấy vi phân yaw.
-    wzRadps = headingController.computeWithMeasurementRate(
-        headingTargetYawDeg,
-        currentYawDeg,
-        gyroZDps,
-        dtSeconds
-    );
+    // Bắt đầu tịnh tiến từ trạng thái trước đó không tịnh tiến, và cũng không
+    // phải vừa nhả manual rotation:
+    //
+    // CHỐT YAW CỦA CHU KỲ CONTROL TRƯỚC.
+    //
+    // Đây là chủ đích: không đợi motor đã bắt đầu tạo vận tốc rồi mới lấy góc,
+    // nhờ vậy controller chống ngay xu hướng lệch đầu tiên do motor/bánh không đều.
+    else if (translationActive && !previousTranslationActive) {
+      headingTargetYawDeg = previousControlYawDeg;
+      headingController.reset();
+    }
+
+    if (state == MotionState::TranslationHold) {
+      // Tiến/lùi/ngang/chéo đều tự động giữ heading.
+      finalWzRadps =
+          computeHeadingCorrection(currentYawDeg, gyroZDps, dtSeconds);
+    }
+    else if (idleHeadingHoldEnabled) {
+      // START ON: xe đứng yên vẫn khóa hướng.
+      finalWzRadps =
+          computeHeadingCorrection(currentYawDeg, gyroZDps, dtSeconds);
+    }
+    else {
+      // START OFF: xe đứng yên tự do, không PID.
+      finalWzRadps = 0.0f;
+
+      // Chỉ reset ở cạnh vừa kết thúc translation để không giữ I-term cũ.
+      if (previousTranslationActive) {
+        headingController.reset();
+      }
+    }
   }
 
-  manualTurning = turningNow;
-
-  // 4) Mixer/kinematics của thư viện đế nhận body velocity cuối cùng.
+  // 4) Gửi command cuối cùng xuống tầng Mecanum.
+  //
+  // Trong Headless ON, body vx/vy được tính lại bằng current yaw ở MỖI chu kỳ.
+  // Vì vậy ngay cả khi manualWzRadps != 0 và thân robot đang xoay liên tục,
+  // vector dịch chuyển ngoài sân vẫn giữ đúng hướng joystick.
   robot.driveVelocity(
       body.vxBodyMps,
       body.vyBodyMps,
-      wzRadps
+      finalWzRadps
   );
 
 #if HEADLESS_DEBUG
-  debugTelemetry(data, field, body, wzRadps);
+  debugTelemetry(
+      data,
+      state,
+      translation,
+      body,
+      manualWzRadps,
+      finalWzRadps
+  );
 #endif
+
+  // 5) Lưu trạng thái chu kỳ này để phát hiện transition ở chu kỳ kế tiếp.
+  previousTranslationActive = translationActive;
+  previousRotationActive = rotationActive;
+
+  // Quan trọng: lưu yaw SAU KHI đã xử lý toàn bộ command của chu kỳ hiện tại.
+  // Nếu chu kỳ sau vừa phát hiện bắt đầu translation, biến này chính là yaw của
+  // nhịp ngay trước khi xe có lệnh vận tốc.
+  previousControlYawDeg = currentYawDeg;
+}
+
+MotionState determineMotionState(bool translationActive,
+                                 bool rotationActive) {
+  if (!translationActive && !rotationActive) {
+    return MotionState::Idle;
+  }
+
+  if (translationActive && !rotationActive) {
+    return MotionState::TranslationHold;
+  }
+
+  if (!translationActive && rotationActive) {
+    return MotionState::ManualRotation;
+  }
+
+  return MotionState::TranslationWithManualRotation;
+}
+
+float computeHeadingCorrection(float currentYawDeg,
+                               float gyroZDps,
+                               float dtSeconds) {
+  // Fuzzy PID dùng:
+  // - error góc có wrap ±180°;
+  // - measurement rate trực tiếp từ gyro Z cho D-term.
+  //
+  // Với target cố định:
+  // d(error)/dt = -d(yaw)/dt ≈ -gyroZ.
+  return headingController.computeWithMeasurementRate(
+      headingTargetYawDeg,
+      currentYawDeg,
+      gyroZDps,
+      dtSeconds
+  );
 }
 
 // ============================================================================
-// PS2 -> FIELD COMMAND
+// PS2 -> TRANSLATION COMMAND
 // ============================================================================
 
 TranslationCommand readTranslationCommand() {
-  // PS2:
+  // PS2 library:
   //   leftX > 0 = gạt sang phải
   //   leftY < 0 = gạt lên
   //
-  // Hệ sân của robot:
-  //   +X = tiến theo sân
-  //   +Y = trái theo sân
-  float forward = clampf(-ps2.leftY() / 127.0f, -1.0f, 1.0f);
-  float left = clampf(-ps2.leftX() / 127.0f, -1.0f, 1.0f);
+  // Quy ước command:
+  //   +X = tiến
+  //   +Y = trái
+  float forward =
+      clampf(-ps2.leftY() / 127.0f, -1.0f, 1.0f);
 
-  const float magnitude = sqrtf(forward * forward + left * left);
+  float left =
+      clampf(-ps2.leftX() / 127.0f, -1.0f, 1.0f);
 
-  TranslationCommand result = {0.0f, 0.0f};
+  const float magnitude =
+      sqrtf(forward * forward + left * left);
+
+  TranslationCommand result = {
+      0.0f,
+      0.0f,
+      0.0f
+  };
 
   if (magnitude <= TRANSLATION_DEADZONE) {
     return result;
   }
 
-  // Giữ đúng góc vector joystick, chỉ loại deadzone theo bán kính.
-  const float limitedMagnitude = magnitude > 1.0f ? 1.0f : magnitude;
+  // Radial deadzone:
+  // - giữ nguyên góc vector joystick;
+  // - bỏ vùng tâm tròn;
+  // - rescale phần còn lại về 0..1.
+  const float limitedMagnitude =
+      magnitude > 1.0f ? 1.0f : magnitude;
+
   const float directionScale = 1.0f / magnitude;
+
   const float rescaledMagnitude =
       (limitedMagnitude - TRANSLATION_DEADZONE) /
       (1.0f - TRANSLATION_DEADZONE);
 
-  result.vxFieldMps =
-      forward * directionScale * rescaledMagnitude * MAX_LINEAR_MPS;
-  result.vyFieldMps =
-      left * directionScale * rescaledMagnitude * MAX_LINEAR_MPS;
+  result.xMps =
+      forward * directionScale *
+      rescaledMagnitude * MAX_LINEAR_MPS;
+
+  result.yMps =
+      left * directionScale *
+      rescaledMagnitude * MAX_LINEAR_MPS;
+
+  result.normalizedMagnitude = rescaledMagnitude;
 
   return result;
 }
 
 float readManualYawCommand() {
-  // rightX > 0 = gạt phải.
-  // Robot +wz = CCW/trái, nên gạt phải phải tạo wz âm (CW).
-  const float rightX = axisWithDeadzone(ps2.rightX(), TURN_DEADZONE);
+  // rightX > 0 khi gạt joystick sang phải.
+  // Quy ước Drive: +wz = CCW/trái.
+  // Vì vậy gạt phải phải tạo -wz (CW).
+  const float rightX =
+      axisWithDeadzone(ps2.rightX(), TURN_DEADZONE);
+
   return -rightX * MAX_MANUAL_YAW_RADPS;
 }
 
 // ============================================================================
-// FIELD -> BODY TRANSFORM
+// BODY-CENTRIC / HEADLESS
 // ============================================================================
+
+BodyTranslation resolveBodyTranslation(
+    const TranslationCommand& command,
+    float currentYawDeg) {
+
+  if (!headlessEnabled) {
+    // BODY-CENTRIC:
+    // joystick luôn bám theo đầu/thân robot.
+    BodyTranslation result;
+    result.vxBodyMps = command.xMps;
+    result.vyBodyMps = command.yMps;
+    return result;
+  }
+
+  // HEADLESS / FIELD-CENTRIC:
+  // command.x/y được hiểu là vector cố định ngoài sân.
+  // IMU yaw hiện tại chỉ được dùng để đổi vector field -> body.
+  return fieldToBody(command, currentYawDeg);
+}
 
 BodyTranslation fieldToBody(const TranslationCommand& field,
                             float currentYawDeg) {
-  // Heading tương đối giữa thân robot và hệ sân đã chốt.
+  // Góc thân robot so với mốc 0 độ của sân đã chốt khi bật R1/SELECT.
   const float relativeYawDeg =
       TungLamFuzzyPID::normalizeDegrees(
           currentYawDeg - fieldZeroYawDeg
       );
 
-  const float yawRad = relativeYawDeg * 0.01745329251994329577f;
+  const float yawRad =
+      relativeYawDeg * 0.01745329251994329577f;
+
   const float c = cosf(yawRad);
   const float s = sinf(yawRad);
 
   // R(-yaw):
+  //
   // [vx_body]   [ cos(yaw)  sin(yaw)] [vx_field]
   // [vy_body] = [-sin(yaw)  cos(yaw)] [vy_field]
+  //
+  // Ví dụ joystick giữ "tiến theo sân":
+  // yaw 0°   -> robot tiến theo thân.
+  // yaw 90°  -> robot đi ngang theo thân.
+  // yaw 180° -> robot lùi theo thân.
+  // Nhưng ngoài sân vector chuyển động vẫn giữ nguyên.
   BodyTranslation result;
 
   result.vxBodyMps =
-      c * field.vxFieldMps +
-      s * field.vyFieldMps;
+      c * field.xMps +
+      s * field.yMps;
 
   result.vyBodyMps =
-      -s * field.vxFieldMps +
-       c * field.vyFieldMps;
+      -s * field.xMps +
+       c * field.yMps;
 
   return result;
 }
@@ -487,7 +758,9 @@ BodyTranslation fieldToBody(const TranslationCommand& field,
 // ============================================================================
 
 float axisWithDeadzone(int16_t axis, float deadzone) {
-  float normalized = clampf(axis / 127.0f, -1.0f, 1.0f);
+  float normalized =
+      clampf(axis / 127.0f, -1.0f, 1.0f);
+
   const float magnitude = fabsf(normalized);
 
   if (magnitude <= deadzone) {
@@ -517,11 +790,36 @@ float signedGyroZDps(float imuGyroZDps) {
   return imuGyroZDps * IMU_YAW_SIGN;
 }
 
+// ============================================================================
+// DEBUG
+// ============================================================================
+
 #if HEADLESS_DEBUG
+
+const char* motionStateName(MotionState state) {
+  switch (state) {
+    case MotionState::Idle:
+      return "IDLE";
+
+    case MotionState::TranslationHold:
+      return "TRANSLATION_HOLD";
+
+    case MotionState::ManualRotation:
+      return "MANUAL_ROTATION";
+
+    case MotionState::TranslationWithManualRotation:
+      return "TRANSLATION_ROTATE";
+  }
+
+  return "UNKNOWN";
+}
+
 void debugTelemetry(const TungLamHWT901BData& data,
-                    const TranslationCommand& field,
+                    MotionState state,
+                    const TranslationCommand& command,
                     const BodyTranslation& body,
-                    float wzRadps) {
+                    float manualWzRadps,
+                    float finalWzRadps) {
   static uint32_t lastPrintMs = 0;
   const uint32_t nowMs = millis();
 
@@ -533,17 +831,31 @@ void debugTelemetry(const TungLamHWT901BData& data,
 
   const TungLamFuzzyPIDStatus pid = headingController.status();
 
-  Serial.print("yaw=");
+  Serial.print("mode=");
+  Serial.print(headlessEnabled ? "HEADLESS" : "BODY");
+
+  Serial.print(" idleHold=");
+  Serial.print(idleHeadingHoldEnabled ? "ON" : "OFF");
+
+  Serial.print(" state=");
+  Serial.print(motionStateName(state));
+
+  Serial.print(" yaw=");
   Serial.print(signedYawDeg(data.yaw_deg), 2);
+
   Serial.print(" target=");
   Serial.print(headingTargetYawDeg, 2);
+
+  Serial.print(" field0=");
+  Serial.print(fieldZeroYawDeg, 2);
+
   Serial.print(" e=");
   Serial.print(pid.error, 2);
 
-  Serial.print(" | field=(");
-  Serial.print(field.vxFieldMps, 2);
+  Serial.print(" | cmd=(");
+  Serial.print(command.xMps, 2);
   Serial.print(",");
-  Serial.print(field.vyFieldMps, 2);
+  Serial.print(command.yMps, 2);
   Serial.print(")");
 
   Serial.print(" body=(");
@@ -552,8 +864,11 @@ void debugTelemetry(const TungLamHWT901BData& data,
   Serial.print(body.vyBodyMps, 2);
   Serial.print(")");
 
+  Serial.print(" manualWz=");
+  Serial.print(manualWzRadps, 2);
+
   Serial.print(" wz=");
-  Serial.print(wzRadps, 2);
+  Serial.print(finalWzRadps, 2);
 
   Serial.print(" K=(");
   Serial.print(pid.activeGains.kp, 4);
@@ -563,4 +878,5 @@ void debugTelemetry(const TungLamHWT901BData& data,
   Serial.print(pid.activeGains.kd, 4);
   Serial.println(")");
 }
+
 #endif
