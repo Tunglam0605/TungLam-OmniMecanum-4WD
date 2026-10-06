@@ -19,12 +19,22 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr@1.8.8
 
-      - name: Install pinned TungLam_PS2 integration dependency
+      - name: Install pinned integration dependencies
         shell: bash
         run: |
-          git clone --depth 1 --branch v0.4.1 \
+          set -euo pipefail
+
+          git clone --depth 1 --branch v0.5.0 \
             https://github.com/Tunglam0605/TungLam-PS2-Controller.git \
             "$RUNNER_TEMP/TungLam_PS2"
+
+          git clone --depth 1 --branch v0.1.1 \
+            https://github.com/Tunglam0605/TungLam-HWT901B.git \
+            "$RUNNER_TEMP/TungLam_HWT901B"
+
+          git clone --depth 1 --branch v0.1.0 \
+            https://github.com/Tunglam0605/TungLam-FuzzyPID.git \
+            "$RUNNER_TEMP/TungLam_FuzzyPID"
 
       - name: Compile every example for Arduino Mega
         shell: bash
@@ -34,9 +44,12 @@ jobs:
             if [ -d "$sketch" ]; then
               echo "=== Compiling $sketch ==="
               arduino-cli compile \
+                --warnings all \
                 --fqbn arduino:avr:mega \
                 --library . \
                 --library "$RUNNER_TEMP/TungLam_PS2" \
+                --library "$RUNNER_TEMP/TungLam_HWT901B" \
+                --library "$RUNNER_TEMP/TungLam_FuzzyPID" \
                 "$sketch"
             fi
           done

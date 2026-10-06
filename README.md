@@ -698,20 +698,57 @@ Người dùng có thể copy nguyên sketch; phần lái xe đã hoạt động
 
 Các ví dụ PS2/vector-mix cũ vẫn được lưu trong `extras/reference-examples/` để tra cứu nhưng không làm rối menu chính.
 
+### PS2 + IMU + Fuzzy PID: `PS2IMUHeadless`
+
+Đây là template nâng cao để ghép **bốn thư viện độc lập** thành một đế Mecanum field-centric/không đầu:
+
+```text
+TungLam_PS2
+    │
+    ├── joystick trái ──> vx_field, vy_field
+    │
+    └── joystick phải ──> manual wz
+                            │
+TungLam_HWT901B ──> yaw + gyro Z
+          │                 │
+          ├──> Field -> Body transform
+          │                 │
+          └──> TungLam_FuzzyPID ──> heading correction wz
+                            │
+                            ▼
+               TungLam_OmniMecanum_4WD
+                            │
+                            ▼
+                  driveVelocity(vx,vy,wz)
+```
+
+Hành vi điều khiển:
+
+- joystick trái luôn ra lệnh theo **hệ sân**, không phụ thuộc đầu robot;
+- có thể vừa tiến/ngang/chéo vừa quay mà vector dịch chuyển ngoài sân vẫn giữ hướng;
+- joystick phải đang lệch tâm → người lái điều khiển yaw trực tiếp;
+- vừa thả joystick phải → controller chốt heading mới và tự giữ hướng;
+- nút **SELECT** lấy lại mốc `field zero` tại tư thế hiện tại;
+- mất PS2 hoặc dữ liệu angle/gyro IMU quá cũ → `robot.stop()` fail-safe;
+- heading loop chạy 100 Hz, PS2 poll 50 Hz.
+
+Template cố ý để transform + heading control ở **application layer**. PS2 chỉ đọc lệnh, IMU chỉ đo trạng thái, FuzzyPID chỉ tính control output và Drive chỉ nhận `vx/vy/wz`.
+
 ## Đấu dây Mega 2560
 
 | Khối | Chân |
 |---|---|
 | PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, ví dụ D53 CS |
+| HWT901B TTL | TX IMU → RX1 D19, RX IMU → TX1 D18, GND chung |
 | M1 trước-trái | PWM D5 |
 | M2 sau-trái | PWM D6 |
 | M3 sau-phải | PWM D7 |
 | M4 trước-phải | PWM D8 |
 | Motor DIR | D30..D37 |
 
-Hai nhóm chân PS2 và motor không xung đột.
+PS2, Serial1 của HWT901B và nhóm chân motor không xung đột trên Mega 2560.
 
-Cả hai example đều:
+Các template điều khiển đều:
 
 - mất PS2 → `robot.stop()` ngay;
 - không dùng `delay()`;
@@ -724,13 +761,14 @@ Cả hai example đều:
 
 # 🧩 Ví dụ đi kèm
 
-Menu Arduino IDE chỉ giữ **4 template có mục đích rõ ràng**:
+Menu Arduino IDE chỉ giữ **5 template có mục đích rõ ràng**:
 
 | Ví dụ | Dùng khi nào |
 |---|---|
 | **FirstMotorTest** | Commissioning: xác nhận M1..M4 và chiều quay trước khi đặt robot xuống sàn |
 | **RobotTemplate** | Template tổng quát: copy project rồi điền `readInputs()`, `motionAllowed()`, `handleMechanisms()` |
 | **PS2RobotControl** | Template khuyến nghị cho robot PS2/RoboBall; drive logic đã xong, chỉ điền các hàm cơ cấu |
+| **PS2IMUHeadless** | Mecanum không đầu/field-centric: PS2 + HWT901B + Fuzzy PID, vừa dịch chuyển vừa quay và giữ hướng |
 | **VelocityControlTemplate** | Template cho ROS2/Serial/PC/auto mode; chỉ cần hiện thực `readVelocityCommand()` |
 
 Triết lý mới:
@@ -747,11 +785,11 @@ extras/reference-examples/
 extras/reference-examples-en/
 ```
 
-Bản comment tiếng Anh của bốn template chính nằm tại `extras/examples-en/` và được regression-check để giữ executable code giống bản tiếng Việt.
+Bản mirror của năm template chính nằm tại `extras/examples-en/` và được regression-check để giữ executable code giống bản tiếng Việt.
 
 ---
 
-# 🔮 Hướng mở rộng đã chuẩn bị sẵn
+# 🔮 Điều khiển nâng cao và hướng mở rộng
 
 ## Encoder velocity PID
 
@@ -767,19 +805,30 @@ PID từng bánh ← encoder
 PWM
 ```
 
-## IMU giữ hướng
+## IMU giữ hướng + Mecanum không đầu — đã có template
+
+`PS2IMUHeadless` dùng yaw để quay vector vận tốc từ hệ sân về hệ robot:
 
 ```text
-yaw target
-   ↓
-IMU yaw
-   ↓
-heading PID
-   ↓
-wz correction [rad/s]
-   ↓
-driveVelocity(vx, vy, wz)
+vx_body =  cos(yaw) * vx_field + sin(yaw) * vy_field
+vy_body = -sin(yaw) * vx_field + cos(yaw) * vy_field
 ```
+
+Heading được điều khiển độc lập ở trục `wz`:
+
+```text
+heading_target ─┐
+                ├─> TungLam_FuzzyPID ─> wz correction
+IMU yaw + gyroZ ┘
+                                      │
+vx_body, vy_body ─────────────────────┤
+                                      ▼
+                         driveVelocity(vx,vy,wz)
+```
+
+Điểm quan trọng là PID **không sửa `vx/vy`**. Nó chỉ điều khiển yaw; transform field-centric giữ hướng dịch chuyển theo sân. Vì vậy robot có thể vừa quay thân vừa tiếp tục đi theo cùng một hướng ngoài sân.
+
+> Drive hiện vẫn là wheel feed-forward vòng hở nếu robot chưa có encoder. Muốn bám vận tốc tịnh tiến chính xác ở tải thay đổi, bước tiếp theo là PID tốc độ từng bánh bằng encoder.
 
 ## ROS2
 

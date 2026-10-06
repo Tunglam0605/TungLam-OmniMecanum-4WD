@@ -548,20 +548,45 @@ Copy the sketch as a project base. The proven RoboBall/V5 drive policy is alread
 
 Older PS2/vector-mix demos remain under `extras/reference-examples/` for reference without cluttering the main Arduino IDE menu.
 
+### PS2 + IMU + Fuzzy PID: `PS2IMUHeadless`
+
+This advanced template composes four independent libraries into a field-centric Mecanum application:
+
+```text
+TungLam_PS2
+    │
+    ├── left stick  ──> vx_field, vy_field
+    └── right stick ──> manual wz
+
+TungLam_HWT901B ──> yaw + gyro Z
+          │
+          ├──> Field -> Body transform
+          └──> TungLam_FuzzyPID ──> heading correction wz
+                            │
+                            ▼
+               TungLam_OmniMecanum_4WD
+                            │
+                            ▼
+                  driveVelocity(vx,vy,wz)
+```
+
+The left stick commands translation in the field frame. The right stick manually rotates the chassis; when released, the current heading becomes the new hold target. SELECT re-zeros the field frame. Loss of PS2 or fresh IMU angle/gyro data triggers a fail-safe stop.
+
 ## Mega 2560 wiring
 
 | Block | Pins |
 |---|---|
 | PS2 SPI | D50 MISO, D51 MOSI, D52 SCK, e.g. D53 CS |
+| HWT901B TTL | IMU TX → RX1 D19, IMU RX → TX1 D18, common GND |
 | M1 front-left | PWM D5 |
 | M2 rear-left | PWM D6 |
 | M3 rear-right | PWM D7 |
 | M4 front-right | PWM D8 |
 | Motor DIR | D30..D37 |
 
-The PS2 and motor pin groups do not conflict.
+PS2, HWT901B on Serial1, and the motor pin group do not conflict on Mega 2560.
 
-Both examples:
+The control templates:
 
 - immediately call `robot.stop()` on PS2 link loss;
 - use no `delay()`;
@@ -792,13 +817,14 @@ For most L298N + DC motor applications, start with **High7k8Hz**.
 
 # 🧩 Examples included
 
-The Arduino IDE menu intentionally exposes only **four project-oriented templates**. Vietnamese comments are in `examples/`; executable-equivalent English mirrors are in `extras/examples-en/`.
+The Arduino IDE menu intentionally exposes only **five project-oriented templates**. Vietnamese comments are in `examples/`; executable-equivalent English mirrors are in `extras/examples-en/`.
 
 | Example | Purpose |
 |---|---|
 | **FirstMotorTest** | Commission M1..M4 placement and polarity before floor testing |
 | **RobotTemplate** | General skeleton; fill `readInputs()`, `motionAllowed()`, and `handleMechanisms()` |
 | **PS2RobotControl** | Recommended PS2/RoboBall template; drive logic is ready, fill mechanism hooks |
+| **PS2IMUHeadless** | Field-centric Mecanum: PS2 + HWT901B + Fuzzy PID with simultaneous translation, rotation, and heading hold |
 | **VelocityControlTemplate** | ROS2/Serial/PC/autonomous template; implement `readVelocityCommand()` |
 
 The new rule is simple:

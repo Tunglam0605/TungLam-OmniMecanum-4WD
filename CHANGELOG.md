@@ -7,6 +7,23 @@ All notable changes to this project will be documented here.
 ### Validation
 - Hardware validation on Arduino Mega + two L298N boards is still required before the 1.0.0 stable release.
 
+## [0.11.1] - 2026-10-06
+
+### PS2 + IMU field-centric integration
+- Added `PS2IMUHeadless`, an application-level template combining TungLam_PS2, TungLam_HWT901B, TungLam_FuzzyPID and this drive library.
+- Left-stick translation is interpreted in the field frame and rotated into the robot body frame from IMU yaw.
+- Right-stick X provides manual yaw rate while translation remains field-centric.
+- Releasing the right stick captures the new heading and enables PID/Fuzzy heading hold.
+- SELECT re-zeros the field frame without modifying the IMU driver's internal angle offset.
+- Added stale angle/gyro checks and fail-safe stop on PS2/IMU loss.
+- Added 100 Hz heading control with gyro-Z derivative feedback and explicit loop dt.
+- Compile CI now pins PS2 v0.5.0, HWT901B v0.1.1 and FuzzyPID v0.1.0.
+
+### Compatibility
+- No motor HAL, timer, braking, Mecanum/Omni equations or public drive API changed.
+- The new headless behavior lives entirely in the example/application layer.
+- Existing V5 and PS2RobotControl behavior remains unchanged.
+
 ## [0.11.0] - 2026-10-02
 
 ### Project-template examples
